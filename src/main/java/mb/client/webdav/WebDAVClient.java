@@ -146,9 +146,6 @@ public class WebDAVClient extends Application {
         // This is needed as media player is a separate stage
         stage.setOnCloseRequest(event -> {
             Platform.exit();
-            
-            // And this is needed as there are some leftover non-daemon threads in the media player library
-            System.exit(0);
         });
         
         // Select last used host if available
@@ -173,6 +170,9 @@ public class WebDAVClient extends Application {
         
         destroyMediaPlayer();
         destroyServiceInstanceIfExists();
+        
+        // And this is needed as there are some leftover non-daemon threads in the media player library
+        System.exit(0);
     }
 
     private void createService(WebDAVHost host) {
@@ -234,6 +234,7 @@ public class WebDAVClient extends Application {
     private ComboBox<WebDAVHost> createHostComboBox() {
         hostsHelper = new HostMgmtHelper();
         hostsComboBox = new ComboBox<>(hostsHelper.getHosts());
+        hostsComboBox.setMinWidth(200);
         hostsComboBox.setOnAction(event -> {
             onHostSelected(hostsComboBox.getValue());
         });
@@ -313,6 +314,10 @@ public class WebDAVClient extends Application {
                 player.hide();
             }
         });
+        
+        // TODO Uncomment to enable media player toggle
+        toggle.setVisible(false);
+        
         return toggle;
     }
     

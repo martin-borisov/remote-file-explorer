@@ -51,9 +51,9 @@ public class TreeViewHelper {
     
     public void updateRoot(WebDAVHost host, WebDAVService service) {
         this.service = service;
-        TreeItem<WebDAVResource> rootItem = tree.getRoot();
+        TreeItem<WebDAVResource> rootItem = createRootItem();
         rootItem.setValue(WebDAVUtil.webDAVResourceFromHost(host));
-
+        tree.setRoot(rootItem);
     }
     
     public void clearTree() {
@@ -71,12 +71,8 @@ public class TreeViewHelper {
             }
         }
     }
-
-    private TreeView<WebDAVResource> createTree(ChangeListener<TreeItem<WebDAVResource>> selectionListener,
-            EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>> nodeExpandHandler,
-            EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>> nodeCollapseHandler) {
-        
-        // Root item
+    
+    private TreeItem<WebDAVResource> createRootItem() {
         TreeItem<WebDAVResource> rootItem = new TreeItem<WebDAVResource>() {
             public boolean isLeaf() {
                 return false;
@@ -85,11 +81,20 @@ public class TreeViewHelper {
         rootItem.setGraphic(Icons.server());
         
         // Node expand and collapse handler
-        rootItem.addEventHandler(TreeItem.branchExpandedEvent(), nodeExpandHandler);
-        rootItem.addEventHandler(TreeItem.branchCollapsedEvent(), nodeCollapseHandler);
+        rootItem.addEventHandler(TreeItem.branchExpandedEvent(), 
+                (EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>>) (event) -> onTreeNodeExpand(event.getSource()));
+        rootItem.addEventHandler(TreeItem.branchCollapsedEvent(), 
+                (EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>>) (event) -> onTreeNodeCollapse(event.getSource()));
+        
+        return rootItem;
+    }
+
+    private TreeView<WebDAVResource> createTree(ChangeListener<TreeItem<WebDAVResource>> selectionListener,
+            EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>> nodeExpandHandler,
+            EventHandler<TreeItem.TreeModificationEvent<WebDAVResource>> nodeCollapseHandler) {
         
         // Tree
-        tree = new TreeView<WebDAVResource>(rootItem);
+        tree = new TreeView<WebDAVResource>();
         
         // Node selection listener
         tree.getSelectionModel().selectedItemProperty().addListener(selectionListener);
