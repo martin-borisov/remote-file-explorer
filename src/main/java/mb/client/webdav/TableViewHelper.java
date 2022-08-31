@@ -287,6 +287,8 @@ public class TableViewHelper {
                 event -> {
                     WebDAVResource res = table.getSelectionModel().getSelectedItem().getDavRes();
                     MPMedia media = WebDAVUtil.mpMediaFromWebDAVResource(res);
+                    media.setUser(service.getHost().getUser());
+                    media.setPassword(service.getHost().getPassword());
                     if(player != null && media != null && WebDAVUtil.isAudioMedia(res)) {
                         player.addToPlaylist(media);
                     }

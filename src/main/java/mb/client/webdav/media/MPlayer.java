@@ -9,7 +9,6 @@ import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
@@ -45,7 +44,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
-import mb.client.webdav.media.MPMedia.Type;
 
 public class MPlayer extends Stage {
   
@@ -434,13 +432,14 @@ public class MPlayer extends Stage {
         } else {
             try {
                 source = new URL(media.getSource());
+                setGlobalCredentials(media);
             } catch (MalformedURLException e) {
                 LOG.log(Level.WARNING, e.getMessage(), e);
                 return;
             }
         }
         
-        // NB: Absoltelly call stop() before open()
+        // NB: Absolutely call stop() before open()
         // otherwise the player instance will just hang due to synchronization issues
         sp.stop();
         try {
@@ -453,6 +452,16 @@ public class MPlayer extends Stage {
     
     private boolean currMediaDurationKnown() {
         return currMediaDurSec != DURATION_UNKNOWN;
+    }
+    
+    private void setGlobalCredentials(MPMedia media) {
+        if(media.getUser() != null && media.getPassword() != null) {
+            Authenticator.setDefault(new Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(media.getUser(), media.getPassword().toCharArray());
+                }
+            });
+        }
     }
     
 }

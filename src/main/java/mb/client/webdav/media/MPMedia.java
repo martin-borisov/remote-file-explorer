@@ -10,14 +10,19 @@ public class MPMedia {
         AUDIO, VIDEO
     }
     
-    private String name;
-    private String source;
+    private String name, source, user, password;
     private Type type;
     
     public MPMedia(String name, String source, Type type) {
         this.name = name;
         this.source = source;
         this.type = type;
+    }
+
+    public MPMedia(String name, String source, String user, String password, Type type) {
+        this(name, source, type);
+        this.user = user;
+        this.password = password;
     }
 
     public String getSource() {
@@ -44,6 +49,24 @@ public class MPMedia {
         this.type = type;
     }
     
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+
+
     public boolean isLocal() {
         return source != null && source.startsWith("file");
     }
