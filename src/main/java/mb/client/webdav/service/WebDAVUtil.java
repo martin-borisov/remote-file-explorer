@@ -95,5 +95,5 @@ public class WebDAVUtil {
      */
     public static boolean isVideoMedia(WebDAVResource res) {
         return res.getType().startsWith("video/");
-    } 
+    }
 }

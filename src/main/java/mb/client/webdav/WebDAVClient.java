@@ -151,6 +151,12 @@ public class WebDAVClient extends Application {
         // Select last used host if available
         selectLastUsedHost();
         
+        // Navigate to last used directory
+        String lastDir = config.getProperty("host.last.dir");
+        if(lastDir != null) {
+            treeHelper.navigateTo(lastDir);
+        }
+        
         // Show
         stage.show();
         this.stage = stage;
@@ -167,6 +173,12 @@ public class WebDAVClient extends Application {
         config.setProperty("col.name.width", String.valueOf(table.getColumns().get(1).getWidth()));
         config.setProperty("taskslist.toggle", String.valueOf(mdp.showDetailNodeProperty().getValue()));
         config.setProperty("resourceview.table", String.valueOf(table.equals(splitPane.getItems().get(1))));
+        
+        // Save last accessed directory
+        WebDAVResource res = treeHelper.getCurrentDirectory();
+        if(res != null) {
+            config.setProperty("host.last.dir", res.getAbsolutePath());
+        }
         
         destroyMediaPlayer();
         destroyServiceInstanceIfExists();

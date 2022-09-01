@@ -1,11 +1,15 @@
 package mb.client.webdav;
 
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import javafx.beans.value.ChangeListener;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.scene.control.TreeItem;
@@ -70,6 +74,55 @@ public class TreeViewHelper {
                 tree.getSelectionModel().select(parent);
             }
         }
+    }
+    
+    public WebDAVResource getCurrentDirectory() {
+        WebDAVResource res = null;
+        TreeItem<WebDAVResource> selected = tree.getSelectionModel().getSelectedItem();
+        if(selected != null) {
+            res = selected.getValue();
+        }
+        return res;
+    }
+    
+    public boolean navigateTo(String absolutePath) {
+        String[] split = Arrays.stream(absolutePath.split("/"))
+                .filter(s -> !s.isBlank())
+                .toArray(String[]::new);
+        if(split.length > 0) {
+            TreeItem<WebDAVResource> root = tree.getRoot();
+            if(root.getValue().getAbsolutePath().equals(split[0])) {
+                expandItemSync(root, split, 1);
+            }
+        }
+        return true;
+    }
+    
+    private void expandItemSync(TreeItem<WebDAVResource> item, String[] childItemNames, int idx) {
+        ListChangeListener<TreeItem<WebDAVResource>> listener = new ListChangeListener<TreeItem<WebDAVResource>>() {
+            public void onChanged(Change<? extends TreeItem<WebDAVResource>> c) {
+                c.next();
+                if(c.wasAdded()) {
+                
+                    // Done loading child items, remove listener
+                    item.getChildren().removeListener(this);
+                
+                    // Find and expand child or select item if last in chain
+                    if(idx < childItemNames.length) {
+                        String childItemName = URLDecoder.decode(childItemNames[idx], Charset.defaultCharset());
+                        for (TreeItem<WebDAVResource> child : item.getChildren()) {
+                            if(childItemName.equals(child.getValue().getName())) {
+                                expandItemSync(child, childItemNames, idx + 1);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        item.getChildren().addListener(listener);
+        item.setExpanded(true);
+        tree.getSelectionModel().select(item);
+        
     }
     
     private TreeItem<WebDAVResource> createRootItem() {
