@@ -2,6 +2,7 @@ package mb.client.webdav.media;
 
 import static java.text.MessageFormat.format;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.net.Authenticator;
 import java.net.MalformedURLException;
@@ -34,12 +35,12 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
@@ -113,10 +114,18 @@ public class MPlayer extends Stage {
         borderPane.setCenter(scrollPane);
         
         // Control layout
-        //MigPane mig = new MigPane("fill, wrap 3, debug");
         MigPane mig = new MigPane("fill, wrap 3, debug",
                 "[][right][grow]");
-        mig.add(new Rectangle(100, 100), "span 1 2");
+        
+        // Album art
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(100);
+        imageView.setFitHeight(100);
+        imageView.imageProperty().bind(Bindings.createObjectBinding(() -> {
+            return MPUtils.imageFromID3Tag(
+                    (ByteArrayInputStream) currMediaAttribsProperty.getValue().get("mp3.id3tag.v2"));
+        }, currMediaAttribsProperty));
+        mig.add(imageView, "span 1 3");
         
         mig.add(new Label("Artist:"));
         Label artistLabel = new Label();
@@ -132,7 +141,18 @@ public class MPlayer extends Stage {
         }, currMediaAttribsProperty));
         mig.add(albumLabel);
         
-        // TODO Add more attributes which might be relevant
+        mig.add(new Label("Format:"));
+        Label formatLabel = new Label();
+        formatLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
+            Map<String, Object> tags = currMediaAttribsProperty.get();
+            String value = "";
+            if(tags.containsKey("audio.type")) {
+                value = format("{0} / {1} Hz / {2} channels", tags.get("audio.type"), 
+                    tags.get("audio.samplerate.hz"), tags.get("audio.channels"));
+            }
+            return value;
+        }, currMediaAttribsProperty));
+        mig.add(formatLabel);
         
         HBox mediaBarBox = new HBox();
         mediaBarBox.setPadding(new Insets(5, 10, 5, 10));
@@ -382,7 +402,7 @@ public class MPlayer extends Stage {
     
     private void onEndOfMedia() {
         
-        // Play next in playslist only when the player has fully stopped, otherwise it hangs
+        // Play next in playlist only when the player has fully stopped, otherwise it hangs
         new Thread(() -> {
             while(!sp.isStopped()) {
                 try {
