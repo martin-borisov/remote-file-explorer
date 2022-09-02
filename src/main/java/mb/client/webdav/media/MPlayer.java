@@ -47,7 +47,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
-import mb.client.webdav.service.ConfigService;
 
 public class MPlayer extends Stage {
   

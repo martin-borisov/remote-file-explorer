@@ -3,13 +3,21 @@ package mb.client.webdav.service;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ConfigService {
 
+    private static final Logger LOG = 
+            Logger.getLogger(ConfigService.class.getName());
+    private static final String FILE_PATH = "config.properties";
 	private static ConfigService ref;
 	private Properties properties;
 
@@ -49,50 +57,43 @@ public class ConfigService {
         }
 	}
 
-	private Properties getProperties() {
+	@SuppressWarnings("serial")
+    private Properties getProperties() {
 		synchronized (ConfigService.class) {
 			if (properties == null) {
-				FileInputStream fis = null;
-				try {
-					fis = new FileInputStream("config.properties");
-					properties = new Properties()  {
-						private static final long serialVersionUID = 2309880819740125962L;
-						
-						// Order alphabetically
-						public synchronized Enumeration<Object> keys() {
-					        return Collections.enumeration(new TreeSet<Object>(super.keySet()));
-					    }
-					};
-					properties.load(fis);
-				} catch (Exception e) {
-					throw new RuntimeException("Failed to load properties file", e);
-				} finally {
-					if(fis != null) {
-						try {
-							fis.close();
-						} catch (IOException e) {
-						}
-					}
-				}
+			    
+			    Path path = Paths.get(FILE_PATH);
+			    if(!Files.exists(path)) {
+			        try {
+                        Files.createFile(path);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+			    }
+			    
+			    try(FileInputStream fis = new FileInputStream(FILE_PATH)) {
+	                 properties = new Properties()  {
+	                        
+	                        // Order alphabetically
+	                        public synchronized Enumeration<Object> keys() {
+	                            return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+	                        }
+	                    };
+	                    properties.load(fis);
+			    } catch (Exception e) {
+			        LOG.log(Level.WARNING, "Failed to load properties file", e);
+			        throw new RuntimeException(e);
+                } 
 			}
 		}
 		return properties;
 	}
 	
 	private void storeProperties() {
-		FileOutputStream fos = null;
-		try {
-			fos = new FileOutputStream("config.properties");
-			getProperties().store(fos, null);
+		try(FileOutputStream fos = new FileOutputStream(FILE_PATH)) {
+		    getProperties().store(fos, null);
 		} catch (Exception e) {
-			throw new RuntimeException(e);
-		} finally {
-			if(fos != null) {
-				try {
-					fos.close();
-				} catch (IOException e) {
-				}
-			}
-		}
+		    LOG.log(Level.WARNING, "Failed to save properties file", e);
+        } 
 	}
 }

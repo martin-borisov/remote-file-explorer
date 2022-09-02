@@ -2,7 +2,6 @@ package mb.client.webdav;
 
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
