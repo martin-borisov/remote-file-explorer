@@ -86,13 +86,11 @@ public class TreeViewHelper {
     }
     
     public boolean navigateTo(String absolutePath) {
-        String[] split = Arrays.stream(absolutePath.split("/"))
-                .filter(s -> !s.isBlank())
-                .toArray(String[]::new);
-        if(split.length > 0) {
+        String[] splitPath = WebDAVUtil.pathToElements(absolutePath);
+        if(splitPath.length > 0) {
             TreeItem<WebDAVResource> root = tree.getRoot();
-            if(root.getValue().getAbsolutePath().equals(split[0])) {
-                expandItemSync(root, split, 1);
+            if(root.getValue().getAbsolutePath().equals(splitPath[0])) {
+                expandItemSync(root, splitPath, 1);
             }
         }
         return true;
@@ -122,7 +120,6 @@ public class TreeViewHelper {
         item.getChildren().addListener(listener);
         item.setExpanded(true);
         tree.getSelectionModel().select(item);
-        
     }
     
     private TreeItem<WebDAVResource> createRootItem() {

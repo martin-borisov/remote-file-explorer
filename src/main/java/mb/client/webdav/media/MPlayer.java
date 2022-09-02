@@ -10,7 +10,9 @@ import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,6 +47,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
+import mb.client.webdav.service.ConfigService;
 
 public class MPlayer extends Stage {
   
@@ -66,6 +69,7 @@ public class MPlayer extends Stage {
         createProperties();
         setupStreamPlayer();
         setupScene();
+        loadStoredPlaylist();
     }
     
     public void addToPlaylist(MPMedia media) {
@@ -100,6 +104,9 @@ public class MPlayer extends Stage {
     public void destroy() {
         sp.stop();
         sp.reset();
+        
+        // Keep playlist
+        PlaylistPersistenceService.getInstance().savePlaylist(new ArrayList<MPMedia>(playlist.getItems()));
     }
     
     /* Create and setup UI */
@@ -297,6 +304,13 @@ public class MPlayer extends Stage {
                 }
             });
         return playlist;
+    }
+    
+    private void loadStoredPlaylist() {
+        List<MPMedia> pl = PlaylistPersistenceService.getInstance().loadPlaylist();
+        if(pl != null) {
+            playlist.getItems().addAll(pl);
+        }
     }
     
     /* Event Handlers */

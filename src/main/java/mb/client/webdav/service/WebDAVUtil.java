@@ -1,6 +1,7 @@
 package mb.client.webdav.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -95,5 +96,14 @@ public class WebDAVUtil {
      */
     public static boolean isVideoMedia(WebDAVResource res) {
         return res.getType().startsWith("video/");
+    }
+    
+    /**
+     * Splits a path delimited by <code>/</code> in an array of elements.
+     */
+    public static String[] pathToElements(String path) {
+        return Arrays.stream(path.split("/"))
+                .filter(s -> !s.isBlank())
+                .toArray(String[]::new);
     }
 }
