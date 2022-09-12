@@ -65,8 +65,6 @@ public class MPMedia {
         this.password = password;
     }
 
-
-
     public boolean isLocal() {
         return source != null && source.startsWith("file");
     }

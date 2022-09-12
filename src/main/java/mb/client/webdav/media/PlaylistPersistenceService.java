@@ -19,7 +19,7 @@ public class PlaylistPersistenceService {
     
     private static final Logger LOG = 
             Logger.getLogger(PlaylistPersistenceService.class.getName());
-    private static final String PATH = "playlist.xml";
+    private static final String FILE_PATH = "playlist.xml";
     private static PlaylistPersistenceService ref;
     
     public static PlaylistPersistenceService getInstance() {
@@ -37,10 +37,10 @@ public class PlaylistPersistenceService {
     @SuppressWarnings("unchecked")
     public List<MPMedia> loadPlaylist() {
         List<MPMedia> playlist = new ArrayList<>();
-        if(Files.exists(Paths.get(PATH))) {
+        if(Files.exists(Paths.get(FILE_PATH))) {
             FileInputStream fis;
             try {
-                fis = new FileInputStream(PATH);
+                fis = new FileInputStream(FILE_PATH);
             } catch (FileNotFoundException e) {
                 LOG.log(Level.WARNING, "Playlist file not found", e);
                 return null;
@@ -57,8 +57,8 @@ public class PlaylistPersistenceService {
         
         FileOutputStream fos;
         try {
-            fos = new FileOutputStream(PATH);
-        } catch (FileNotFoundException e) {
+            fos = new FileOutputStream(FILE_PATH);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
         
@@ -69,6 +69,5 @@ public class PlaylistPersistenceService {
         enc.writeObject(playlist);
         enc.close();
     }
-
 }
 

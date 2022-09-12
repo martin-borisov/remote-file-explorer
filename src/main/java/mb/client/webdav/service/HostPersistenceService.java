@@ -18,7 +18,7 @@ import mb.client.webdav.model.WebDAVHost;
 
 public class HostPersistenceService {
     
-    private static final String PATH = "hosts.xml";
+    private static final String FILE_PATH = "hosts.xml";
     private static HostPersistenceService ref;
     private List<WebDAVHost> hosts;
     
@@ -55,12 +55,11 @@ public class HostPersistenceService {
     @SuppressWarnings("unchecked")
     private void loadHosts() {
         hosts = new ArrayList<>();
-        
-        if(Files.exists(Paths.get(PATH))) {
+        if(Files.exists(Paths.get(FILE_PATH))) {
             FileInputStream fis;
             try {
-                fis = new FileInputStream(PATH);
-            } catch (FileNotFoundException e) {
+                fis = new FileInputStream(FILE_PATH);
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
             
@@ -74,7 +73,7 @@ public class HostPersistenceService {
         
         FileOutputStream fos;
         try {
-            fos = new FileOutputStream(PATH);
+            fos = new FileOutputStream(FILE_PATH);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }

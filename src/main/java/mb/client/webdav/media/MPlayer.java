@@ -5,17 +5,20 @@ import static java.text.MessageFormat.format;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.net.Authenticator;
-import java.net.MalformedURLException;
-import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.SourceDataLine;
 
 import org.tbee.javafx.scene.layout.MigPane;
 
@@ -29,20 +32,29 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
@@ -57,7 +69,7 @@ public class MPlayer extends Stage {
     private Slider timeSlider, volumeSlider;
     private Label playTime;
     private ListView<MPMedia> playlist;
-    private int currentlyPlayingIdx = -1;
+    private MPMedia currentlyPlayingMedia;
     private StreamPlayer sp;
     private int currMediaDurSec;
     private SimpleObjectProperty<Map<String, Object>> currMediaAttribsProperty;
@@ -120,50 +132,86 @@ public class MPlayer extends Stage {
         borderPane.setCenter(scrollPane);
         
         // Control layout
-        MigPane mig = new MigPane("fill, wrap 3, debug",
-                "[][right][grow]");
+        MigPane mig = new MigPane("fill, wrap 2",
+                "[left, grow][]", "top");
+        
+        // Title
+        Label titleLabel = new Label();
+        titleLabel.setFont(Font.font(null, FontWeight.BOLD, 18));
+        titleLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
+            String title = (String) currMediaAttribsProperty.get().get("title");
+            if(title == null) {
+                MPMedia media = getCurrentlyPlayingMedia();
+                if(media != null) {
+                    title = media.getName();
+                }
+            }
+            return title;
+        }, currMediaAttribsProperty));
+        
+        // Artist & Album
+        Label artistAlbumLabel = new Label();
+        artistAlbumLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
+            
+            StringBuilder buf = new StringBuilder();
+            if(currMediaAttribsProperty.get().containsKey("author")) {
+                buf.append("By '").append(currMediaAttribsProperty.get().get("author")).append("' ");
+            }
+            if(currMediaAttribsProperty.get().containsKey("album")) {
+                buf.append("from album '").append(currMediaAttribsProperty.get().get("album")).append("'");
+            }
+            return buf.toString();
+        }, currMediaAttribsProperty));
+        
+        // Format
+        Label formatLabel = new Label();
+        formatLabel.setFont(Font.font(null, FontPosture.ITALIC, -1));
+        formatLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
+            
+            Map<String, Object> tags = currMediaAttribsProperty.get();
+            StringBuilder buf = new StringBuilder();
+            
+            if(tags.containsKey("audio.type")) {
+                buf.append(tags.get("audio.type").toString()).append(" | ");
+            }
+            
+            if(tags.containsKey("basicplayer.sourcedataline")) {
+                SourceDataLine line = (SourceDataLine) tags.get("basicplayer.sourcedataline");
+                AudioFormat format = line.getFormat();
+                buf.append(format("{0,number,#} Hz | {1} channels", 
+                        format.getFrameRate(), format.getChannels()));
+            }
+            return buf.toString();
+        }, currMediaAttribsProperty));
+        
+        VBox tagsBox = new VBox(titleLabel, artistAlbumLabel, formatLabel);
+        mig.add(tagsBox);
         
         // Album art
         ImageView imageView = new ImageView();
         imageView.setFitWidth(100);
         imageView.setFitHeight(100);
         imageView.imageProperty().bind(Bindings.createObjectBinding(() -> {
-            return MPUtils.imageFromID3Tag(
-                    (ByteArrayInputStream) currMediaAttribsProperty.getValue().get("mp3.id3tag.v2"));
-        }, currMediaAttribsProperty));
-        mig.add(imageView, "span 1 3");
-        
-        mig.add(new Label("Artist:"));
-        Label artistLabel = new Label();
-        artistLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
-            return currMediaAttribsProperty.get().containsKey("author") ? (String) currMediaAttribsProperty.get().get("author") : "";
-        }, currMediaAttribsProperty));
-        mig.add(artistLabel);
-        
-        mig.add(new Label("Album:"));
-        Label albumLabel = new Label();
-        albumLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
-            return currMediaAttribsProperty.get().containsKey("album") ? (String) currMediaAttribsProperty.get().get("album") : "";
-        }, currMediaAttribsProperty));
-        mig.add(albumLabel);
-        
-        mig.add(new Label("Format:"));
-        Label formatLabel = new Label();
-        formatLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
-            Map<String, Object> tags = currMediaAttribsProperty.get();
-            String value = "";
-            if(tags.containsKey("audio.type")) {
-                value = format("{0} / {1} Hz / {2} channels", tags.get("audio.type"), 
-                    tags.get("audio.samplerate.hz"), tags.get("audio.channels"));
+            Image image = null;
+            
+            // Try to fetch cover image from file and as a second option from the ID3 tag
+            if(currentlyPlayingMedia != null) {
+                image = MPUtils.fetchMediaCoverArt(currentlyPlayingMedia);
+                if(image == null) {
+                    image = MPUtils.imageFromID3Tag((ByteArrayInputStream) currMediaAttribsProperty.getValue().get("mp3.id3tag.v2"));
+                }
             }
-            return value;
+            return image;
         }, currMediaAttribsProperty));
-        mig.add(formatLabel);
+        mig.add(imageView);
         
+        // Playback controls
+        mig.add(new Separator(Orientation.HORIZONTAL), "span 2, growx");
         HBox mediaBarBox = new HBox();
         mediaBarBox.setPadding(new Insets(5, 10, 5, 10));
         mediaBarBox.setSpacing(5);
-        mig.add(mediaBarBox, "span 3, growx");
+        mediaBarBox.setAlignment(Pos.CENTER);
+        mig.add(mediaBarBox, "span 2, growx");
         borderPane.setBottom(mig);
 
         // Buttons
@@ -265,43 +313,55 @@ public class MPlayer extends Stage {
                     if (empty) {
                         setGraphic(null);
                         setText(null);
+                        setTooltip(null);
                     } else if(media != null) {
                         
                         // Title
-                        Text title = new Text(media.getName());
-                        title.setStyle("-fx-font-weight: bold");
+                        Text titleText = new Text(media.getName());
+                        titleText.setStyle("-fx-font-weight: bold");
                         
                         // Source
-                        Text source = new Text(media.getSource());
-                        source.setStyle("-fx-fill: dimgrey");
+                        String source = URLDecoder.decode(media.getSource(), Charset.defaultCharset());
+                        //Text sourceText = new Text(source);
+                        //sourceText.setStyle("-fx-fill: dimgrey");
                         
                         // Layout
-                        HBox hBox = new HBox(title);
+                        HBox hBox = new HBox(titleText);
                         hBox.setSpacing(5);
                         hBox.setAlignment(Pos.BASELINE_LEFT);
                         
-                        VBox vBox = new VBox(hBox, source);
-                        vBox.setStyle("-fx-spacing: 5");
+                        //VBox vBox = new VBox(hBox, sourceText);
+                        //vBox.setStyle("-fx-spacing: 5");
                         
                         // Playing
-                        if(playlist.getItems().indexOf(media) == currentlyPlayingIdx) {
+                        if(media.equals(currentlyPlayingMedia)) {
                             hBox.getChildren().add(0, Icons.play());
                         }
                         
-                        setGraphic(vBox);
+                        setGraphic(hBox);
                         setText(null);
+                        setTooltip(new Tooltip(source));
                     }
                 }
             };
         });
         
+        // Double click
         playlist.setOnMouseClicked(event -> {
-                int idx = playlist.getSelectionModel().getSelectedIndex();
-                if (event.getClickCount() == 2 && idx > -1) {
-                    playMedia(idx);
-                    playlist.refresh();
-                }
-            });
+            MPMedia media = playlist.getSelectionModel().getSelectedItem();
+            if (event.getClickCount() == 2 && media != null) {
+                playMedia(media);
+                playlist.refresh();
+            }
+        });
+        
+        // Context menu
+        MenuItem removeMenuItem = new MenuItem("Remove");
+        removeMenuItem.setOnAction((event) -> {
+            removeSelectedFromPlaylist();
+        });
+        playlist.setContextMenu(new ContextMenu(removeMenuItem));
+        
         return playlist;
     }
     
@@ -342,7 +402,9 @@ public class MPlayer extends Stage {
             timeSlider.setDisable(true);
         }
         
-        currMediaAttribsProperty.set(properties);
+        Platform.runLater(() -> {
+            currMediaAttribsProperty.set(properties);
+        });
     }
     
     private void onPlayerStatusUpdated(StreamPlayerEvent event) {
@@ -430,31 +492,29 @@ public class MPlayer extends Stage {
     /* Utilities */
     
     private void playNext() {
-        if(currentlyPlayingIdx < (playlist.getItems().size() - 1)) {
-            currentlyPlayingIdx++;
-            playMedia(currentlyPlayingIdx);
-            playlist.getSelectionModel().select(currentlyPlayingIdx);
+        int idx = playlist.getItems().indexOf(currentlyPlayingMedia);
+        if(idx > -1 && idx < (playlist.getItems().size() - 1)) {
+            MPMedia nextMedia = playlist.getItems().get(++idx);
+            playMedia(nextMedia);
+            playlist.getSelectionModel().select(nextMedia);
         }
     }
     
     private void playPrev() {
-        if(currentlyPlayingIdx > 0) {
-            currentlyPlayingIdx--;
-            playMedia(currentlyPlayingIdx);
-            playlist.getSelectionModel().select(currentlyPlayingIdx);
+        int idx = playlist.getItems().indexOf(currentlyPlayingMedia);
+        if(idx > 0) {
+            MPMedia prevMedia = playlist.getItems().get(--idx);
+            playMedia(prevMedia);
+            playlist.getSelectionModel().select(prevMedia);
         }
     }
     
-    private void playMedia(int idx) {
-        playMedia(playlist.getItems().get(idx));
-        currentlyPlayingIdx = idx;
-    }
-    
     private void playMedia(MPMedia media) {
-        Object source;
+        currentlyPlayingMedia = media;
         
         // Files get support for things like duration and progress
         // as opposed to remote URLs
+        Object source;
         if(media.isLocal()) {
             try {
                 source = new File(new URI(media.getSource()));
@@ -464,9 +524,9 @@ public class MPlayer extends Stage {
             }
         } else {
             try {
-                source = new URL(media.getSource());
                 setGlobalCredentials(media);
-            } catch (MalformedURLException e) {
+                source = new URL(media.getSource());
+            } catch (Exception e) {
                 LOG.log(Level.WARNING, e.getMessage(), e);
                 return;
             }
@@ -483,18 +543,22 @@ public class MPlayer extends Stage {
         }
     }
     
+    private MPMedia getCurrentlyPlayingMedia() {
+        return currentlyPlayingMedia;
+    }
+    
+    private boolean removeSelectedFromPlaylist() {
+        MPMedia media = playlist.getSelectionModel().getSelectedItem();
+        return removeFromPlaylist(media);
+    }
+    
     private boolean currMediaDurationKnown() {
         return currMediaDurSec != DURATION_UNKNOWN;
     }
     
     private void setGlobalCredentials(MPMedia media) {
         if(media.getUser() != null && media.getPassword() != null) {
-            Authenticator.setDefault(new Authenticator() {
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(media.getUser(), media.getPassword().toCharArray());
-                }
-            });
+            Authenticator.setDefault(MPUtils.createAuthenticator(media));
         }
     }
-    
 }

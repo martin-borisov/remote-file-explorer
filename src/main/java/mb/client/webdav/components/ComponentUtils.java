@@ -2,20 +2,15 @@ package mb.client.webdav.components;
 
 import java.text.MessageFormat;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import org.controlsfx.control.PropertySheet;
 import org.controlsfx.control.PropertySheet.Item;
 import org.controlsfx.property.BeanProperty;
 import org.controlsfx.property.BeanPropertyUtils;
 
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import mb.client.webdav.model.WebDAVResource;

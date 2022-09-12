@@ -3,6 +3,12 @@ package mb.client.webdav.media;
 import static java.text.MessageFormat.format;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
+import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,5 +39,38 @@ public class MPUtils {
             }
         }
         return image;
+    }
+    
+    public static Image fetchMediaCoverArt(MPMedia media) throws IOException {
+        
+        Image image = null;
+        String source = media.getSource();
+        int idx = source.lastIndexOf('/');
+        if(idx > -1) {
+            String path = source.substring(0, idx + 1); // Keep the forward slash
+        
+            URL url = new URL(path + "cover.jpg");
+            LOG.fine(format("Trying to fetch cover image at URL: {0}", url));
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setAuthenticator(createAuthenticator(media));
+        
+            if(con.getResponseCode() == 200) {
+                try(InputStream is = con.getInputStream()) {
+                    image = new Image(is, 100, 100, true, true);
+                }
+            } else {
+                LOG.fine(format("Cover image missing or connection failed with response code {0}", 
+                    con.getResponseCode()));
+            }
+        }
+        return image;
+    }
+    
+    public static Authenticator createAuthenticator(MPMedia media) {
+        return new Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(media.getUser(), media.getPassword().toCharArray());
+            }
+        };
     }
 }
