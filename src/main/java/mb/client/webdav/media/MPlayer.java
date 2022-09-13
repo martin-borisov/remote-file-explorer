@@ -141,9 +141,8 @@ public class MPlayer extends Stage {
         titleLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
             String title = (String) currMediaAttribsProperty.get().get("title");
             if(title == null) {
-                MPMedia media = getCurrentlyPlayingMedia();
-                if(media != null) {
-                    title = media.getName();
+                if(currentlyPlayingMedia != null) {
+                    title = currentlyPlayingMedia.getName();
                 }
             }
             return title;
@@ -180,6 +179,13 @@ public class MPlayer extends Stage {
                 AudioFormat format = line.getFormat();
                 buf.append(format("{0,number,#} Hz | {1} channels", 
                         format.getFrameRate(), format.getChannels()));
+                
+                if(tags.containsKey("bitrate")) {
+                    buf.append(format(" | {0,number,#} kbs", Integer.valueOf(tags.get("bitrate").toString()) / 1000));
+                }
+                
+                if(Boolean.valueOf(String.valueOf(tags.get("vbr")))) {
+                    buf.append(" vbr");                }
             }
             return buf.toString();
         }, currMediaAttribsProperty));
@@ -198,7 +204,8 @@ public class MPlayer extends Stage {
             if(currentlyPlayingMedia != null) {
                 image = MPUtils.fetchMediaCoverArt(currentlyPlayingMedia);
                 if(image == null) {
-                    image = MPUtils.imageFromID3Tag((ByteArrayInputStream) currMediaAttribsProperty.getValue().get("mp3.id3tag.v2"));
+                    image = MPUtils.imageFromID3Tag(
+                            (ByteArrayInputStream) currMediaAttribsProperty.getValue().get("mp3.id3tag.v2"));
                 }
             }
             return image;
@@ -541,10 +548,6 @@ public class MPlayer extends Stage {
         } catch (StreamPlayerException e) {
             LOG.log(Level.WARNING, "Playback failed", e);
         }
-    }
-    
-    private MPMedia getCurrentlyPlayingMedia() {
-        return currentlyPlayingMedia;
     }
     
     private boolean removeSelectedFromPlaylist() {

@@ -100,6 +100,15 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        
+        <!-- Multiple fixes for jflac-code, excluded above -->
+        <dependency>
+            <groupId>drogatkin</groupId>
+            <artifactId>JustFLAC</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        
+        <!-- Needed for ID3 artwork handling -->
         <dependency>
             <groupId>com.mpatric</groupId>
             <artifactId>mp3agic</artifactId>
