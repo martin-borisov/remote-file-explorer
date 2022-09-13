@@ -8,8 +8,6 @@ import java.net.Authenticator;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,13 +36,11 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
-import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -55,7 +51,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
@@ -312,43 +307,11 @@ public class MPlayer extends Stage {
     private ListView<MPMedia> createPlaylist() {
         playlist = new ListView<>();
         
+        // Custom list cell
         playlist.setCellFactory(value -> {
-            return new ListCell<MPMedia>() {
-                protected void updateItem(MPMedia media, boolean empty) {
-                    super.updateItem(media, empty);
-                    
-                    if (empty) {
-                        setGraphic(null);
-                        setText(null);
-                        setTooltip(null);
-                    } else if(media != null) {
-                        
-                        // Title
-                        Text titleText = new Text(media.getName());
-                        titleText.setStyle("-fx-font-weight: bold");
-                        
-                        // Source
-                        String source = URLDecoder.decode(media.getSource(), Charset.defaultCharset());
-                        //Text sourceText = new Text(source);
-                        //sourceText.setStyle("-fx-fill: dimgrey");
-                        
-                        // Layout
-                        HBox hBox = new HBox(titleText);
-                        hBox.setSpacing(5);
-                        hBox.setAlignment(Pos.BASELINE_LEFT);
-                        
-                        //VBox vBox = new VBox(hBox, sourceText);
-                        //vBox.setStyle("-fx-spacing: 5");
-                        
-                        // Playing
-                        if(media.equals(currentlyPlayingMedia)) {
-                            hBox.getChildren().add(0, Icons.play());
-                        }
-                        
-                        setGraphic(hBox);
-                        setText(null);
-                        setTooltip(new Tooltip(source));
-                    }
+            return new MPMediaListCell() {
+                protected void updateItem(MPMedia item, boolean empty) {
+                    updateItem(item, empty, currentlyPlayingMedia);
                 }
             };
         });
@@ -449,37 +412,28 @@ public class MPlayer extends Stage {
         }
     }
     
-    private void onPlayerProgress(int nEncodedBytes, long microsecondPosition, 
-            byte[] pcmData, Map<String, Object> properties) {
-        
-        // TODO This needs to be actually detected rather than hardcoded
-        final String extension = "mp3";
-        
-        if ("mp3".equals(extension) || "wav".equals(extension)) {
-            long totalBytes = sp.getTotalBytes();
+    private void onPlayerProgress(int nEncodedBytes, long microsecondPosition, byte[] pcmData,
+            Map<String, Object> properties) {
 
-            // Calculate progress and elapsed time
-            double progress = (nEncodedBytes > 0 && totalBytes > 0) ? 
-                    (nEncodedBytes * 1.0f / totalBytes * 1.0f) : 0;
-            int sec = (int) (microsecondPosition / 1000000);
-            
-            // Update UI
-            // TODO This should not be called so often, but only two times per second
-            Platform.runLater(() -> {
-                
-                // Make sure user is not touching the slider and update
-                if(!timeSlider.isValueChanging()) {
-                    timeSlider.setValue(progress);
-                }
-                
-                playTime.setText(TimeTool.getTimeEdited(sec) + 
-                        (currMediaDurationKnown() ? (" / " + TimeTool.getTimeEdited(currMediaDurSec)) : ""));
-            });
+        long totalBytes = sp.getTotalBytes();
 
-        } else {
-            // System.out.println("Current time is : " + (int) (microsecondPosition /
-            // 1000000) + " seconds");
-        }
+        // Calculate progress and elapsed time
+        double progress = (nEncodedBytes > 0 && totalBytes > 0) ? (nEncodedBytes * 1.0f / totalBytes * 1.0f) : 0;
+        int sec = (int) (microsecondPosition / 1000000);
+
+        // Update UI
+        // TODO This should not be called so often, but only two times per second
+        Platform.runLater(() -> {
+
+            // Make sure user is not touching the slider and update
+            if (!timeSlider.isValueChanging()) {
+                timeSlider.setValue(progress);
+            }
+
+            playTime.setText(TimeTool.getTimeEdited(sec)
+                    + (currMediaDurationKnown() ? (" / " + TimeTool.getTimeEdited(currMediaDurSec)) : ""));
+        });
+
     }
     
     private void onEndOfMedia() {
