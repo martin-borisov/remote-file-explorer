@@ -6,7 +6,10 @@ import java.io.File;
 import java.text.Collator;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
 import org.controlsfx.control.TaskProgressView;
@@ -44,6 +47,7 @@ import mb.client.webdav.tasks.UploadFileTask;
 
 public class TableViewHelper {
     
+    private static final Logger LOG = Logger.getLogger(TableViewHelper.class.getName());
     private static final ConfigService config = ConfigService.getInstance();
     private static final Collator DEFAULT_COLLATOR = Collator.getInstance();
     
@@ -275,7 +279,6 @@ public class TableViewHelper {
                 break;
             }
         }
-
     }
     
     private void createContextMenu() {
@@ -286,11 +289,23 @@ public class TableViewHelper {
                     }, 
                 event -> {
                     WebDAVResource res = table.getSelectionModel().getSelectedItem().getDavRes();
-                    MPMedia media = WebDAVUtil.mpMediaFromWebDAVResource(res);
-                    if(player != null && media != null && WebDAVUtil.isAudioMedia(res)) {
-                        media.setUser(service.getHost().getUser());
-                        media.setPassword(service.getHost().getPassword());
-                        player.addToPlaylist(media);
+                    if (player != null) {
+                        if (res.isDirectory()) {
+
+                            List<WebDAVResource> files;
+                            try {
+                                
+                                // TODO This should be an async task
+                                files = service.listFiles(res.getAbsolutePath());
+                            } catch (WebDAVServiceException e) {
+                                LOG.log(Level.WARNING, "Listing files failed", e);
+                                return;
+                            }
+
+                            files.stream().forEachOrdered(this::addResourceToPlaylistIfMedia);
+                        } else {
+                            addResourceToPlaylistIfMedia(res);
+                        }
                     }
                 },
                 event -> {
@@ -329,5 +344,14 @@ public class TableViewHelper {
                 .findAny()
                 .orElse(null);
 
+    }
+    
+    private void addResourceToPlaylistIfMedia(WebDAVResource res) {
+        MPMedia media = WebDAVUtil.mpMediaFromWebDAVResource(res);
+        if (media != null && WebDAVUtil.isAudioMedia(res)) {
+            media.setUser(service.getHost().getUser());
+            media.setPassword(service.getHost().getPassword());
+            player.addToPlaylist(media);
+        }
     }
 }

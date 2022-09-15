@@ -1,5 +1,6 @@
 package mb.client.webdav.media;
 
+import java.io.File;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 
@@ -72,8 +73,8 @@ public class MPMediaListCell extends ListCell<MPMedia> {
         
         setOnDragOver(event -> {
             if (event.getGestureSource() != this &&
-                   event.getDragboard().hasString()) {
-                event.acceptTransferModes(TransferMode.MOVE);
+                   (event.getDragboard().hasString() || event.getDragboard().hasFiles())) {
+                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
             }
             event.consume();
         });
@@ -81,7 +82,7 @@ public class MPMediaListCell extends ListCell<MPMedia> {
         setOnDragDropped(event -> {
             boolean success = false;
             Dragboard db = event.getDragboard();
-            if (db.hasString()) {
+            if(db.hasString()) {
                 int idx = Integer.valueOf(db.getString());
                 ObservableList<MPMedia> items = getListView().getItems();
                 MPMedia movedItem = items.get(idx);
@@ -100,21 +101,38 @@ public class MPMediaListCell extends ListCell<MPMedia> {
                 }
                 getListView().getSelectionModel().select(movedItem);
                 success = true;
+            } else if(db.hasFiles()) {
+                for (File file : db.getFiles()) {
+                    
+                    // Make sure we add audio files only
+                    if (file.isFile() && MPUtils.isMedia(file)) {
+                        MPMedia media = new MPMedia(file.getName(), file.toURI().toString(), MPMedia.Type.AUDIO);
+                        if (isEmpty()) {
+                            getListView().getItems().add(media);
+                        } else {
+                            getListView().getItems().add(getIndex(), media);
+                        }
+                    }
+                }
+                success = true;
             }
             event.setDropCompleted(success);
             event.consume();
         });
         
         setOnDragEntered(event -> {
-            if (event.getGestureSource() != this &&
-                    event.getDragboard().hasString()) {
-                setStyle("-fx-border-style: solid none none none; -fx-border-width: 5; -fx-border-color: lightblue;");
+            if (event.getGestureSource() != this) {
+                Dragboard db = event.getDragboard();
+                if(db.hasString() || 
+                        (db.hasFiles() && db.getFiles().stream().anyMatch(file -> MPUtils.isMedia(file)))) {
+                    setStyle("-fx-border-style: solid none none none; -fx-border-width: 5; -fx-border-color: lightblue;");
+                }
             }
         });
         
         setOnDragExited(event -> {
             if (event.getGestureSource() != this &&
-                    event.getDragboard().hasString()) {
+                    (event.getDragboard().hasString() || event.getDragboard().hasFiles())) {
                 setStyle("-fx-border-style: none none none none;");
             }
         });

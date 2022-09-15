@@ -18,6 +18,9 @@ import java.util.logging.Logger;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.SourceDataLine;
 
+import org.kordamp.ikonli.fontawesome5.FontAwesomeRegular;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.tbee.javafx.scene.layout.MigPane;
 
 import com.goxr3plus.streamplayer.stream.StreamPlayer;
@@ -29,6 +32,7 @@ import com.goxr3plus.streamplayer.tools.TimeTool;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -41,6 +45,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -54,6 +59,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
+import mb.client.webdav.service.ConfigService;
 
 public class MPlayer extends Stage {
   
@@ -63,6 +69,7 @@ public class MPlayer extends Stage {
     private Button playButton;
     private Slider timeSlider, volumeSlider;
     private Label playTime;
+    private ToggleButton loopToggle;
     private ListView<MPMedia> playlist;
     private MPMedia currentlyPlayingMedia;
     private StreamPlayer sp;
@@ -73,7 +80,7 @@ public class MPlayer extends Stage {
         super();
         setTitle("Audio Player");
         createProperties();
-        setupStreamPlayer();
+        createStreamPlayer();
         setupScene();
         loadStoredPlaylist();
     }
@@ -86,12 +93,16 @@ public class MPlayer extends Stage {
         return playlist.getItems().remove(media);
     }
     
+    public void clearPlaylist() {
+        playlist.getItems().clear();
+    }
+    
     private void createProperties() {
         currMediaAttribsProperty = new SimpleObjectProperty<Map<String,Object>>(
                 Collections.emptyMap());
     }
     
-    private void setupStreamPlayer() {
+    private void createStreamPlayer() {
         sp = new StreamPlayer();
         sp.addStreamPlayerListener(new StreamPlayerListener() {
             public void opened(Object dataSource, Map<String, Object> properties) {
@@ -245,6 +256,21 @@ public class MPlayer extends Stage {
         });
         mediaBarBox.getChildren().add(infoButton);
         
+        // Clear
+        Button clear = new Button("", new FontIcon(FontAwesomeRegular.TRASH_ALT));
+        clear.setOnAction(event -> {
+            clearPlaylist();
+        });
+        
+        // Loop
+        loopToggle = new ToggleButton("", new FontIcon(FontAwesomeSolid.REDO));
+        loopToggle.setSelected(Boolean.valueOf(
+                ConfigService.getInstance().getOrCreateProperty("mplayer.loop", Boolean.FALSE.toString())));
+        loopToggle.setOnAction(event -> {
+            ConfigService.getInstance().setProperty("mplayer.loop", String.valueOf(loopToggle.isSelected()));
+        });
+        mediaBarBox.getChildren().addAll(new Separator(Orientation.VERTICAL), clear, loopToggle);
+        
         // Scene
         setWidth(600);
         setHeight(400);
@@ -321,7 +347,6 @@ public class MPlayer extends Stage {
             MPMedia media = playlist.getSelectionModel().getSelectedItem();
             if (event.getClickCount() == 2 && media != null) {
                 playMedia(media);
-                playlist.refresh();
             }
         });
         
@@ -349,6 +374,11 @@ public class MPlayer extends Stage {
             sp.pause();
         } else if(sp.isPaused()) {
             sp.resume();
+        } else if(currentlyPlayingMedia == null && !playlist.getItems().isEmpty()){
+            MPMedia selected = playlist.getItems().get(0);
+            if(selected != null) {
+                playMedia(selected);
+            }
         }
     }
     
@@ -407,6 +437,8 @@ public class MPlayer extends Stage {
             LOG.fine(event.getPlayerStatus() + " status handled");
             break;
             
+        case SEEKED:
+            // TODO Perhaps do something here?
         default:
             LOG.fine(event.getPlayerStatus() + " status received but no handling needed");
         }
@@ -453,20 +485,20 @@ public class MPlayer extends Stage {
     /* Utilities */
     
     private void playNext() {
-        int idx = playlist.getItems().indexOf(currentlyPlayingMedia);
-        if(idx > -1 && idx < (playlist.getItems().size() - 1)) {
-            MPMedia nextMedia = playlist.getItems().get(++idx);
-            playMedia(nextMedia);
-            playlist.getSelectionModel().select(nextMedia);
+        ObservableList<MPMedia> items = playlist.getItems();
+        int idx = items.indexOf(currentlyPlayingMedia);
+        if(idx > -1 && idx < items.size() - 1) {
+            playMedia(items.get(++idx));
+        } else if(idx == items.size() - 1 && loopToggle.isSelected()){
+            playMedia(items.get(0));
         }
     }
     
     private void playPrev() {
-        int idx = playlist.getItems().indexOf(currentlyPlayingMedia);
+        ObservableList<MPMedia> items = playlist.getItems();
+        int idx = items.indexOf(currentlyPlayingMedia);
         if(idx > 0) {
-            MPMedia prevMedia = playlist.getItems().get(--idx);
-            playMedia(prevMedia);
-            playlist.getSelectionModel().select(prevMedia);
+            playMedia(items.get(--idx));
         }
     }
     
@@ -499,6 +531,7 @@ public class MPlayer extends Stage {
         try {
             sp.open(source);
             sp.play();
+            playlist.refresh();
         } catch (StreamPlayerException e) {
             LOG.log(Level.WARNING, "Playback failed", e);
         }

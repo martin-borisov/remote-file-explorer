@@ -192,6 +192,8 @@ public class TreeViewHelper {
             // Fetch child resources of three item
             List<WebDAVResource> files;
             try {
+                
+                // TODO This should be an async task!
                 files = service.list(treeItem.getValue().getAbsolutePath());
             } catch (WebDAVServiceException e) {
                 LOG.log(Level.WARNING, e.getMessage(), e);
