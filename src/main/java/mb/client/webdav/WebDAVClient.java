@@ -317,7 +317,6 @@ public class WebDAVClient extends Application {
     }
     
     private ToggleSwitch createMediaPlayerToggle() {
-        
         ToggleSwitch toggle = new ToggleSwitch("Media Player");
         toggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if(newVal) {
@@ -326,10 +325,7 @@ public class WebDAVClient extends Application {
                 player.hide();
             }
         });
-        
-        // TODO Uncomment to enable media player toggle
-        toggle.setVisible(false);
-        
+        toggle.setVisible(true);
         return toggle;
     }
     
@@ -476,7 +472,7 @@ public class WebDAVClient extends Application {
         }
     }
     
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         launch(args);
     }
 }

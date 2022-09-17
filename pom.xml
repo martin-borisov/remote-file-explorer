@@ -21,6 +21,7 @@
 
     <build>
         <plugins>
+        
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -32,6 +33,31 @@
                         <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888</option>
                     </options>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>custom-jar-assembly-descriptor.xml</descriptor>
+                    </descriptors>
+                    <archive>
+                        <manifest>
+                            <mainClass>mb.client.webdav.Launcher</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>uberjar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -100,14 +126,14 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        
+
         <!-- Multiple fixes for jflac-code, excluded above -->
         <dependency>
             <groupId>drogatkin</groupId>
             <artifactId>JustFLAC</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
-        
+
         <!-- Needed for ID3 artwork handling -->
         <dependency>
             <groupId>com.mpatric</groupId>
