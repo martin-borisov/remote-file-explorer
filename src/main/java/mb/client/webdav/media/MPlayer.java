@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -159,11 +160,13 @@ public class MPlayer extends Stage {
         artistAlbumLabel.textProperty().bind(Bindings.createObjectBinding(() -> {
             
             StringBuilder buf = new StringBuilder();
-            if(currMediaAttribsProperty.get().containsKey("author")) {
-                buf.append("By '").append(currMediaAttribsProperty.get().get("author")).append("' ");
+            Map<String, Object> props = currMediaAttribsProperty.get();
+            if(props.containsKey("author") || props.containsKey("artist")) {
+                buf.append("By '").append(
+                        Optional.ofNullable(props.get("author")).orElse(props.get("artist"))).append("' ");
             }
-            if(currMediaAttribsProperty.get().containsKey("album")) {
-                buf.append("from album '").append(currMediaAttribsProperty.get().get("album")).append("'");
+            if(props.containsKey("album")) {
+                buf.append("from album '").append(props.get("album")).append("'");
             }
             return buf.toString();
         }, currMediaAttribsProperty));
@@ -183,8 +186,8 @@ public class MPlayer extends Stage {
             if(tags.containsKey("basicplayer.sourcedataline")) {
                 SourceDataLine line = (SourceDataLine) tags.get("basicplayer.sourcedataline");
                 AudioFormat format = line.getFormat();
-                buf.append(format("{0,number,#} Hz | {1} channels", 
-                        format.getFrameRate(), format.getChannels()));
+                buf.append(format("{0,number,#} Hz | {1} bit | {2} channels", 
+                        format.getFrameRate(), format.getSampleSizeInBits(), format.getChannels()));
                 
                 if(tags.containsKey("bitrate")) {
                     buf.append(format(" | {0,number,#} kbs", Integer.valueOf(tags.get("bitrate").toString()) / 1000));
@@ -502,7 +505,7 @@ public class MPlayer extends Stage {
         }
     }
     
-    private void playMedia(MPMedia media) {
+    public void playMedia(MPMedia media) {
         currentlyPlayingMedia = media;
         
         // Files get support for things like duration and progress

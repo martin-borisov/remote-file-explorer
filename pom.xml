@@ -7,8 +7,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>15</maven.compiler.source>
-        <maven.compiler.target>15</maven.compiler.target>
+        <maven.compiler.source>18</maven.compiler.source>
+        <maven.compiler.target>18</maven.compiler.target>
         <javafx.version>18</javafx.version>
     </properties>
 
@@ -30,7 +30,7 @@
                     <mainClass>mb.client.webdav.WebDAVClient</mainClass>
                     <options>
                         <option>-Djava.util.logging.config.file=${basedir}/logging.properties</option>
-                        <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888</option>
+                        <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888,quiet=y</option>
                     </options>
                 </configuration>
             </plugin>
@@ -63,6 +63,12 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -113,7 +119,7 @@
         <dependency>
             <groupId>com.github.goxr3plus</groupId>
             <artifactId>java-stream-player</artifactId>
-            <version>9.0.4</version>
+            <version>10.0.0</version>
 
             <!-- 
                 Looks like jflac's AudioFileReader is not compatible with remote files
