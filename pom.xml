@@ -30,6 +30,7 @@
                     <mainClass>mb.client.webdav.WebDAVClient</mainClass>
                     <options>
                         <option>-Djava.util.logging.config.file=${basedir}/logging.properties</option>
+                        <option>-DTraceAudioFileReader=true</option>
                         <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888,quiet=y</option>
                     </options>
                 </configuration>
@@ -115,29 +116,12 @@
             <version>11.0</version>
         </dependency>
 
-        <!-- Uses jitpack.io repo -->
+        <!-- FLAC support -->
+        <!-- Contains multiple fixes for the original jflac-codec -->
         <dependency>
-            <groupId>com.github.goxr3plus</groupId>
-            <artifactId>java-stream-player</artifactId>
-            <version>10.0.0</version>
-
-            <!-- 
-                Looks like jflac's AudioFileReader is not compatible with remote files
-                and blocks palyback of all remote file types
-            -->
-            <exclusions>
-                <exclusion>
-                    <groupId>org.jflac</groupId>
-                    <artifactId>jflac-codec</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- Multiple fixes for jflac-code, excluded above -->
-        <dependency>
-            <groupId>drogatkin</groupId>
+            <groupId>com.github.martin-borisov</groupId>
             <artifactId>JustFLAC</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.0.2</version>
         </dependency>
 
         <!-- Needed for ID3 artwork handling -->
@@ -145,6 +129,30 @@
             <groupId>com.mpatric</groupId>
             <artifactId>mp3agic</artifactId>
             <version>0.9.1</version>
+        </dependency>
+        
+        <!-- MP3 support -->
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>mp3spi</artifactId>
+            <version>1.9.5.4</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.googlecode.soundlibs</groupId>
+                    <artifactId>tritonus-share</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>tritonus-all</artifactId>
+            <version>0.3.7.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.googlecode.soundlibs</groupId>
+                    <artifactId>tritonus-share</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 </project>

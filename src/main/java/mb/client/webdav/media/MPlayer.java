@@ -3,11 +3,8 @@ package mb.client.webdav.media;
 import static java.text.MessageFormat.format;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.net.Authenticator;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,19 +13,10 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.SourceDataLine;
-
 import org.kordamp.ikonli.fontawesome5.FontAwesomeRegular;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.tbee.javafx.scene.layout.MigPane;
-
-import com.goxr3plus.streamplayer.stream.StreamPlayer;
-import com.goxr3plus.streamplayer.stream.StreamPlayerEvent;
-import com.goxr3plus.streamplayer.stream.StreamPlayerException;
-import com.goxr3plus.streamplayer.stream.StreamPlayerListener;
-import com.goxr3plus.streamplayer.tools.TimeTool;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -60,12 +48,14 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
+import mb.client.webdav.media.audio.AudioPlayer;
+import mb.client.webdav.media.audio.AudioPlayerException;
+import mb.client.webdav.media.audio.AudioPlayerListener;
+import mb.client.webdav.media.audio.AudioSource;
 import mb.client.webdav.service.ConfigService;
 
 public class MPlayer extends Stage {
-  
     private static final Logger LOG = Logger.getLogger(MPlayer.class.getName());
-    private static final int DURATION_UNKNOWN = -1;
     
     private Button playButton;
     private Slider timeSlider, volumeSlider;
@@ -73,15 +63,17 @@ public class MPlayer extends Stage {
     private ToggleButton loopToggle;
     private ListView<MPMedia> playlist;
     private MPMedia currentlyPlayingMedia;
-    private StreamPlayer sp;
-    private int currMediaDurSec;
+    private MediaPreProcessor currentlyPlayingMpp;
+    private AudioPlayer player;
     private SimpleObjectProperty<Map<String, Object>> currMediaAttribsProperty;
+    
+    // TODO 1) Mp3 tags/properties 2) Duration of local mp3 and wav 3) Ability to seek for local media
 
     public MPlayer() {
         super();
         setTitle("Audio Player");
         createProperties();
-        createStreamPlayer();
+        createAudioPlayer();
         setupScene();
         loadStoredPlaylist();
     }
@@ -103,25 +95,36 @@ public class MPlayer extends Stage {
                 Collections.emptyMap());
     }
     
-    private void createStreamPlayer() {
-        sp = new StreamPlayer();
-        sp.addStreamPlayerListener(new StreamPlayerListener() {
-            public void opened(Object dataSource, Map<String, Object> properties) {
-                onPlayerOpened(dataSource, properties);
+    private void createAudioPlayer() {
+        player = new AudioPlayer();
+        player.addListener(new AudioPlayerListener() {
+            public void onOpen(Map<String, Object> properties) {
+                onPlayerOpened(properties);
             }
-            public void statusUpdated(StreamPlayerEvent event) {
-                onPlayerStatusUpdated(event);
+            public void onStart() {
+                onPlayerStarted();
             }
-            public void progress(int nEncodedBytes, long microsecondPosition, 
-                    byte[] pcmData, Map<String, Object> properties) {
-                onPlayerProgress(nEncodedBytes, microsecondPosition, pcmData, properties);
+            public void onStop() {
+                onPlayerStopped();
+            }
+            public void onEndOfMedia() {
+                MPlayer.this.onEndOfMedia();
+            }
+            public void onProgress(int elapsedSeconds) {
+                // NB: This is called roughly once per second
+                onPlayerProgress(elapsedSeconds);
+            }
+            public void onPause() {
+                onPlayerStopped();
+            }
+            public void onResume() {
+                onPlayerStarted();
             }
         });
     }
     
     public void destroy() {
-        sp.stop();
-        sp.reset();
+        player.stop();
         
         // Keep playlist
         PlaylistPersistenceService.getInstance().savePlaylist(new ArrayList<MPMedia>(playlist.getItems()));
@@ -181,20 +184,16 @@ public class MPlayer extends Stage {
             
             if(tags.containsKey("audio.type")) {
                 buf.append(tags.get("audio.type").toString()).append(" | ");
-            }
-            
-            if(tags.containsKey("basicplayer.sourcedataline")) {
-                SourceDataLine line = (SourceDataLine) tags.get("basicplayer.sourcedataline");
-                AudioFormat format = line.getFormat();
                 buf.append(format("{0,number,#} Hz | {1} bit | {2} channels", 
-                        format.getFrameRate(), format.getSampleSizeInBits(), format.getChannels()));
+                        tags.get("audio.samplerate.hz"), tags.get("audio.samplesize.bits"), tags.get("audio.channels")));
                 
                 if(tags.containsKey("bitrate")) {
                     buf.append(format(" | {0,number,#} kbs", Integer.valueOf(tags.get("bitrate").toString()) / 1000));
                 }
                 
                 if(Boolean.valueOf(String.valueOf(tags.get("vbr")))) {
-                    buf.append(" vbr");                }
+                    buf.append(" vbr");                
+                }
             }
             return buf.toString();
         }, currMediaAttribsProperty));
@@ -317,8 +316,7 @@ public class MPlayer extends Stage {
         timeSlider.setMinWidth(50);
         timeSlider.setMaxWidth(Double.MAX_VALUE);
         timeSlider.setMax(1);
-        timeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-        });
+        timeSlider.setDisable(true);
         timeSlider.setOnMouseReleased(event -> {
             onTimeSliderValueChangedByUser();
         });
@@ -330,6 +328,7 @@ public class MPlayer extends Stage {
         volumeSlider.setPrefWidth(70);
         volumeSlider.setMaxWidth(Region.USE_PREF_SIZE);
         volumeSlider.setMinWidth(30);
+        volumeSlider.setDisable(true);
         return volumeSlider;
     }
     
@@ -373,19 +372,26 @@ public class MPlayer extends Stage {
     /* Event Handlers */
     
     private void onPlayButtonClicked() {
-        if(sp.isPlaying()) {
-            sp.pause();
-        } else if(sp.isPaused()) {
-            sp.resume();
-        } else if(currentlyPlayingMedia == null && !playlist.getItems().isEmpty()){
-            MPMedia selected = playlist.getItems().get(0);
-            if(selected != null) {
-                playMedia(selected);
-            }
+        
+        // Pause current, resume current or play first media in playlist
+        try {
+            if(player.isPlaying()) {
+                player.pause();
+            } else if(player.isPaused()) {
+                player.resume();
+            } else if(currentlyPlayingMedia == null && !playlist.getItems().isEmpty()){
+                MPMedia selected = playlist.getItems().get(0);
+                if(selected != null) {
+                    playMedia(selected);
+                }
+            } 
+        } catch (AudioPlayerException e) {
+            LOG.log(Level.WARNING, "Audio player error", e);
         }
     }
     
     private void onTimeSliderValueChangedByUser() {
+        /*
         if(currMediaDurationKnown()) {
             try {
                 sp.seekTo((int) (timeSlider.getValue() * currMediaDurSec));
@@ -393,96 +399,48 @@ public class MPlayer extends Stage {
                 LOG.log(Level.WARNING, e.getMessage(), e);
             }
         }
+        */
     }
     
-    private void onPlayerOpened(Object dataSource, Map<String, Object> properties) {
-        LOG.fine(format("Player opened with media duration: {0,number,#}", 
-                currMediaDurSec = sp.getDurationInSeconds()));
-        
-        if(currMediaDurationKnown()) {
-            timeSlider.setDisable(false);
-        } else {
-            timeSlider.setDisable(true);
-        }
-        
+    private void onPlayerOpened(Map<String, Object> properties) {
         Platform.runLater(() -> {
             currMediaAttribsProperty.set(properties);
         });
     }
     
-    private void onPlayerStatusUpdated(StreamPlayerEvent event) {
-        
-        switch (event.getPlayerStatus()) {
-        case PAUSED:
-            Platform.runLater(() -> {
-                playButton.setGraphic(Icons.play());
-            });
-            LOG.fine(event.getPlayerStatus() + " status handled");
-            break;
-            
-        case STOPPED:
-            Platform.runLater(() -> {
-                playButton.setGraphic(Icons.play());
-            });
-            LOG.fine(event.getPlayerStatus() + " status handled");
-            break;
-            
-        case PLAYING:
-        case RESUMED:
-            Platform.runLater(() -> {
-                playButton.setGraphic(Icons.pause());
-            });
-            LOG.fine(event.getPlayerStatus() + " status handled");
-            break;
-            
-        case EOM:
-            onEndOfMedia();
-            LOG.fine(event.getPlayerStatus() + " status handled");
-            break;
-            
-        case SEEKED:
-            // TODO Perhaps do something here?
-        default:
-            LOG.fine(event.getPlayerStatus() + " status received but no handling needed");
-        }
+    private void onPlayerStarted() {
+        Platform.runLater(() -> {
+            playButton.setGraphic(Icons.pause());
+        });
     }
     
-    private void onPlayerProgress(int nEncodedBytes, long microsecondPosition, byte[] pcmData,
-            Map<String, Object> properties) {
-
-        long totalBytes = sp.getTotalBytes();
-
-        // Calculate progress and elapsed time
-        double progress = (nEncodedBytes > 0 && totalBytes > 0) ? (nEncodedBytes * 1.0f / totalBytes * 1.0f) : 0;
-        int sec = (int) (microsecondPosition / 1000000);
-
-        // Update UI
-        // TODO This should not be called so often, but only two times per second
+    private void onPlayerStopped() {
         Platform.runLater(() -> {
-
-            // Make sure user is not touching the slider and update
-            if (!timeSlider.isValueChanging()) {
-                timeSlider.setValue(progress);
-            }
-
-            playTime.setText(TimeTool.getTimeEdited(sec)
-                    + (currMediaDurationKnown() ? (" / " + TimeTool.getTimeEdited(currMediaDurSec)) : ""));
+            playButton.setGraphic(Icons.play());
         });
-
+    }
+    
+    private void onPlayerProgress(int elapsedSeconds) {
+        Platform.runLater(() -> {
+            
+            // Update elapsed time label
+            int hrs = (elapsedSeconds / 60) / 60;
+            int min = (elapsedSeconds / 60) % 60;
+            int sec = elapsedSeconds % 60;
+            playTime.setText(MessageFormat.format("{0}{1}:{2}{3}:{4}{5}", 
+                    hrs < 10 ? "0" : "", hrs, 
+                    min < 10 ? "0" : "", min, 
+                    sec < 10 ? "0" : "", sec));
+            
+            // Update progress slider (make sure user is not touching the slider and update)
+            if(currentlyPlayingMpp.getDurationSec() > 0 && !timeSlider.isValueChanging()) {
+                timeSlider.setValue((float) (elapsedSeconds) / currentlyPlayingMpp.getDurationSec());
+            }
+        });
     }
     
     private void onEndOfMedia() {
-        
-        // Play next in playlist only when the player has fully stopped, otherwise it hangs
-        new Thread(() -> {
-            while(!sp.isStopped()) {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                }
-            }
-            playNext();
-        }).start();
+        playNext();
     }
     
     /* Utilities */
@@ -507,46 +465,36 @@ public class MPlayer extends Stage {
     
     public void playMedia(MPMedia media) {
         currentlyPlayingMedia = media;
+        currentlyPlayingMpp = new MediaPreProcessor(media);
         
-        // Files get support for things like duration and progress
-        // as opposed to remote URLs
-        Object source;
-        if(media.isLocal()) {
-            try {
-                source = new File(new URI(media.getSource()));
-            } catch (URISyntaxException e) {
-                LOG.log(Level.WARNING, e.getMessage(), e);
-                return;
-            }
-        } else {
-            try {
-                setGlobalCredentials(media);
-                source = new URL(media.getSource());
-            } catch (Exception e) {
-                LOG.log(Level.WARNING, e.getMessage(), e);
-                return;
-            }
+        // Set credentials for non-local sources, i.e. URLs
+        if(!media.isLocal()) {
+            setGlobalCredentials(media);
         }
         
-        // NB: Absolutely call stop() before open()
-        // otherwise the player instance will just hang due to synchronization issues
-        sp.stop();
+        // Open and start player
         try {
-            sp.open(source);
-            sp.play();
-            playlist.refresh();
-        } catch (StreamPlayerException e) {
-            LOG.log(Level.WARNING, "Playback failed", e);
+            player.open(new AudioSource(media.getSource()));
+            player.play();
+        } catch (AudioPlayerException e) {
+            LOG.log(Level.WARNING, "Audio playback failed", e);
+            return;
         }
+        
+        Platform.runLater(() -> {
+            
+            // Force list cells refresh 
+            playlist.refresh();
+            
+            // Reset progress
+            timeSlider.setValue(0);
+        });
+        
     }
     
     private boolean removeSelectedFromPlaylist() {
         MPMedia media = playlist.getSelectionModel().getSelectedItem();
         return removeFromPlaylist(media);
-    }
-    
-    private boolean currMediaDurationKnown() {
-        return currMediaDurSec != DURATION_UNKNOWN;
     }
     
     private void setGlobalCredentials(MPMedia media) {
