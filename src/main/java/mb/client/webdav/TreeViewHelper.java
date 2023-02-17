@@ -212,7 +212,7 @@ public class TreeViewHelper {
         if(treeItem != null && treeItem.getValue() != null) {
             WebDAVResource res = (WebDAVResource) treeItem.getValue();
         
-            final ListDirsTask task = new ListDirsTask(service,  res.getAbsolutePath());
+            final ListDirsTask task = new ListDirsTask(service,  res.getAbsolutePath(), true);
             task.valueProperty().addListener((obs, oldVal, newVal) -> {
             
                 ObservableList<TreeItem<WebDAVResource>> nodeChildren = treeItem.getChildren();
