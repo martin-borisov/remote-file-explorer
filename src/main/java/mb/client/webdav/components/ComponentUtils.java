@@ -17,6 +17,10 @@ import mb.client.webdav.model.WebDAVResource;
 
 public class ComponentUtils {
     
+    /**
+     * Shows a dialog displaying the properties of a {@link WebDAVResource}
+     * @param res Resource instance
+     */
     public static void showResourcePropertiesDialog(WebDAVResource res) {
         
         ObservableList<Item> props = BeanPropertyUtils.getProperties(res);
@@ -34,7 +38,12 @@ public class ComponentUtils {
         alert.showAndWait();
     }
     
-    public static void showMapPropertiesDialog(Map<?, ?> map) {
+    /**
+     * Shows a dialog displaying the provided name value pairs
+     * @param map Map containing name-value pairs
+     * @param msg Optional message to the user
+     */
+    public static void showMapPropertiesDialog(Map<?, ?> map, String msg) {
         
         VBox layout = new VBox();
         map.entrySet().stream().forEach(entry -> {
@@ -45,7 +54,11 @@ public class ComponentUtils {
         
         Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle("Properties");
-        //alert.setHeaderText(MessageFormat.format("Properties of resource ''{0}''", res.getName()));
+        
+        if(msg != null) {
+            alert.setHeaderText(msg);
+        }
+        
         alert.getDialogPane().setPrefWidth(400);
         alert.getDialogPane().setContent(layout);
         alert.showAndWait();

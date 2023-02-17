@@ -254,7 +254,8 @@ public class MPlayer extends Stage {
             return currMediaAttribsProperty.getValue().isEmpty();
         }, currMediaAttribsProperty));
         infoButton.setOnAction(event -> {
-            ComponentUtils.showMapPropertiesDialog(currMediaAttribsProperty.getValue());
+            ComponentUtils.showMapPropertiesDialog(currMediaAttribsProperty.getValue(), 
+                    format("Properties of ''{0}''", currentlyPlayingMedia.getName()));
         });
         mediaBarBox.getChildren().add(infoButton);
         
