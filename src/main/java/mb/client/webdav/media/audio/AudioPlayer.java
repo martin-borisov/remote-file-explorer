@@ -148,6 +148,9 @@ public class AudioPlayer {
         // Invalidate formats
         sourceFormat = null;
         targetFormat = null;
+        
+        // Notify listeners
+        listeners.forEach(l -> l.onStop());
     }
     
     public boolean isPlaying() {
@@ -300,7 +303,7 @@ public class AudioPlayer {
     
     private static SourceDataLine getSourceDataLine(AudioFormat format) throws AudioPlayerException {
         try {
-            return AudioSystem.getSourceDataLine(format);
+            return AudioSystemWrapper.getSourceDataLine(format);
         } catch (LineUnavailableException e) {
             throw new AudioPlayerException(e);
         }
