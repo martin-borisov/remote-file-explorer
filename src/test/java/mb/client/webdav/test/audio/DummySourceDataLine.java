@@ -1,4 +1,4 @@
-package mb.client.webdav.test;
+package mb.client.webdav.test.audio;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
