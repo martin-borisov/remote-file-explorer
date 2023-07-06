@@ -221,15 +221,19 @@ public class WebDAVClient extends Application {
         ToggleButton buttonList = new ToggleButton();
         buttonList.setGraphic(new FontIcon(FontAwesomeSolid.LIST));
         buttonList.setOnAction(event -> {
+            double[] pos = splitPane.getDividerPositions();
             splitPane.getItems().remove(1);
             splitPane.getItems().add(table);
+            splitPane.setDividerPositions(pos);
         });
         
         ToggleButton buttonGrid = new ToggleButton();
         buttonGrid.setGraphic(new FontIcon(FontAwesomeSolid.TABLE));
         buttonGrid.setOnAction(event -> {
+            double[] pos = splitPane.getDividerPositions();
             splitPane.getItems().remove(1);
             splitPane.getItems().add(gridPane);
+            splitPane.setDividerPositions(pos);
         });
         
         ToggleGroup group = new ToggleGroup();
@@ -281,6 +285,7 @@ public class WebDAVClient extends Application {
         // Make sure the grid scrolls
         ScrollPane scrollPane = new ScrollPane(grid);
         scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
         return scrollPane;
     }
     
@@ -391,7 +396,7 @@ public class WebDAVClient extends Application {
     }
     
     /**
-     * Called by a listener for {@link #fileList} changes
+     * Called by a listener for {@link #fileList} changes. Updates the grid view.
      */
     @SuppressWarnings("unchecked")
     private void onFileListChanged(Change<? extends ResourceTableItem> change) {
@@ -399,19 +404,20 @@ public class WebDAVClient extends Application {
         // This is needed before inspecting the change
         change.next();
         
-        // Get only added items 
-        List<? extends ResourceTableItem> list = change.getAddedSubList();
+        // React on addition or reordering (we are not interested in removal or replacement)
+        if(change.wasAdded() || change.wasPermutated()) {
+            List<? extends ResourceTableItem> list = change.getList();
         
-        // TODO Make width configurable
-        final int width = 100;
-        grid.getChildren().clear();
-        for (ResourceTableItem res : list) {
+            // TODO Make width configurable
+            final int width = 100;
+            grid.getChildren().clear();
+            for (ResourceTableItem res : list) {
+                grid.addItem(res.getName(), res.getIcon(), width, res);
+            }
             
-            grid.addItem(res.getName(), res.getIcon(), width, res);
+            stopLoadThumbsTaskIfRunning();
+            startLoadThumbsTask((List<ResourceTableItem>) list, width);
         }
-        
-        stopLoadThumbsTaskIfRunning();
-        startLoadThumbsTask((List<ResourceTableItem>) list, width);
     }
     
     private void startLoadThumbsTask(List<ResourceTableItem> list, int width) {

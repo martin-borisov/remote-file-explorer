@@ -23,9 +23,14 @@ import com.github.sardine.report.SardineReport;
 public class MockSardineImpl implements Sardine {
     
     private List<DavResource> davResListToReturn;
+    private InputStream isToReturn;
     
     public void setDavResListToReturn(List<DavResource> davResListToReturn) {
         this.davResListToReturn = davResListToReturn;
+    }
+    
+    public void setIsToReturn(InputStream isToReturn) {
+        this.isToReturn = isToReturn;
     }
 
     @Override
@@ -107,14 +112,12 @@ public class MockSardineImpl implements Sardine {
 
     @Override
     public InputStream get(String url) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+        return isToReturn;
     }
 
     @Override
     public InputStream get(String url, Map<String, String> headers) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+        return get(url);
     }
 
     @Override

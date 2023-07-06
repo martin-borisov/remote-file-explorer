@@ -19,6 +19,7 @@ public class GridView extends TilePane {
 
     public GridView(double hgap, double vgap) {
         super(hgap, vgap);
+        setBackground(new Background(new BackgroundFill(Color.WHITE, CornerRadii.EMPTY, Insets.EMPTY)));
     }
 
     public Node addItem(String label, FontIcon icon, int width, Object obj) {
