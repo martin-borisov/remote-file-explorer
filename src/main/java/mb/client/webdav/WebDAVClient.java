@@ -1,9 +1,5 @@
 package mb.client.webdav;
 
-import static java.text.MessageFormat.format;
-
-import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,14 +15,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -39,11 +33,8 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import mb.client.webdav.components.GridView;
 import mb.client.webdav.components.Icons;
@@ -56,8 +47,10 @@ import mb.client.webdav.service.WebDAVService;
 import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
 import mb.client.webdav.tasks.DownloadFileTask;
-import mb.client.webdav.tasks.LoadThumbsTask;
 
+// TODO When a file is deleted the grid is not refreshed and vice versa
+// TODO When a file is uploaded the table and grid are not refreshed
+// TODO When an image (file) is deleted and reuploaded the thumb doesn't show anymore
 public class WebDAVClient extends Application {
     
     private static final Logger LOG = Logger.getLogger(WebDAVClient.class.getName());
@@ -79,7 +72,6 @@ public class WebDAVClient extends Application {
     private TaskProgressView<Task<?>> tpv;
     private WebDAVService service;
     private ObservableList<ResourceTableItem> fileList;
-    private LoadThumbsTask currentLoadThumbsTask;
     
     public WebDAVClient() {
         fileList = FXCollections.observableArrayList();
@@ -128,6 +120,8 @@ public class WebDAVClient extends Application {
         // Status bar
         statusBar = new StatusBar();
         statusBar.setText("");
+        statusBar.textProperty().bind(grid.thumbLoadingMessageProperty());
+        statusBar.progressProperty().bind(grid.thumbLoadingProgressProperty());
         borderPane.setBottom(statusBar);
         
         // Task status list toggle
@@ -267,18 +261,12 @@ public class WebDAVClient extends Application {
     
     
     private ScrollPane createGrid() {
-        grid = new GridView(10, 10);
+        grid = new GridView(service, fileList, 10, 10);
         grid.setPadding(new Insets(10));
         
         grid.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 onRowDoubleClick((ResourceTableItem) grid.getSelectedItem().getUserData());
-            }
-        });
-        
-        fileList.addListener(new ListChangeListener<ResourceTableItem>() {
-            public void onChanged(Change<? extends ResourceTableItem> c) {
-                onFileListChanged(c);
             }
         });
         
@@ -380,6 +368,7 @@ public class WebDAVClient extends Application {
             createService(host);
             treeHelper.updateRoot(host, service);
             tableHelper.setService(service);
+            grid.setService(service);
         }
     }
     
@@ -393,89 +382,6 @@ public class WebDAVClient extends Application {
             // Select new host
             hostsComboBox.getSelectionModel().select(host);
         });
-    }
-    
-    /**
-     * Called by a listener for {@link #fileList} changes. Updates the grid view.
-     */
-    @SuppressWarnings("unchecked")
-    private void onFileListChanged(Change<? extends ResourceTableItem> change) {
-
-        // This is needed before inspecting the change
-        change.next();
-        
-        // React on addition or reordering (we are not interested in removal or replacement)
-        if(change.wasAdded() || change.wasPermutated()) {
-            List<? extends ResourceTableItem> list = change.getList();
-        
-            // TODO Make width configurable
-            final int width = 100;
-            grid.getChildren().clear();
-            for (ResourceTableItem res : list) {
-                grid.addItem(res.getName(), res.getIcon(), width, res);
-            }
-            
-            stopLoadThumbsTaskIfRunning();
-            startLoadThumbsTask((List<ResourceTableItem>) list, width);
-        }
-    }
-    
-    private void startLoadThumbsTask(List<ResourceTableItem> list, int width) {
-        
-        // Load image thumbs
-        currentLoadThumbsTask = new LoadThumbsTask(service, list, width);
-        currentLoadThumbsTask.valueProperty().addListener((obs, oldVal, newVal) -> {
-            LOG.fine(format("Thumb map updated with size {0}", newVal.size()));
-            updateGridThumbsWithImages(newVal);
-        });
-        
-        // Since updating the value on the fly from the task is not guaranteed,
-        // make sure all thumbs are loaded when task is finally done
-        currentLoadThumbsTask.setOnSucceeded(evt -> {
-            
-            // Value can be null if task is cancelled
-            if(currentLoadThumbsTask.getValue() != null) {
-                LOG.fine(format("Task done with final size {0}", currentLoadThumbsTask.getValue().size()));
-                updateGridThumbsWithImages(currentLoadThumbsTask.getValue());
-            }
-            clearStatusBar();
-        });
-        
-        // Show message and progress on status bar
-        currentLoadThumbsTask.messageProperty().addListener((obs, oldVal, newVal) -> {
-            statusBar.setText(newVal);
-        });
-        currentLoadThumbsTask.progressProperty().addListener((obs, oldVal, newVal) -> {
-            statusBar.setProgress(newVal.doubleValue());
-        });
-        
-        WebDAVUtil.startTask(currentLoadThumbsTask);
-    }
-    
-    private void stopLoadThumbsTaskIfRunning() {
-        if(currentLoadThumbsTask != null) {
-            currentLoadThumbsTask.cancel();
-        }
-    }
-    
-    private void clearStatusBar() {
-        statusBar.setText(null);
-        statusBar.setProgress(0);
-    }
-    
-    /**
-     * Updates the currently visible grid icons with actual thumbs
-     */
-    private void updateGridThumbsWithImages(Map<ResourceTableItem, Image> thumbMap) {
-        for (Node node : grid.getChildren()) {
-            for (ResourceTableItem res : thumbMap.keySet()) {
-                if(res.equals(node.getUserData())) {
-                    ((VBox) node).getChildren().remove(0);
-                    ((VBox) node).getChildren().add(0, new ImageView(thumbMap.get(res)));
-                    break;
-                }
-            }
-        }
     }
     
     public static void main(String[] args) {

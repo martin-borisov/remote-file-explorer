@@ -283,58 +283,9 @@ public class TableViewHelper {
     
     private void createContextMenu() {
         table.setContextMenu(new ResourceContextMenu(
-                event -> {
-                    ComponentUtils.showResourcePropertiesDialog(
-                            table.getSelectionModel().getSelectedItem().getDavRes());
-                    }, 
-                event -> {
-                    WebDAVResource res = table.getSelectionModel().getSelectedItem().getDavRes();
-                    if (player != null) {
-                        if (res.isDirectory()) {
-
-                            List<WebDAVResource> files;
-                            try {
-                                
-                                // TODO This should be an async task
-                                files = service.listFiles(res.getAbsolutePath());
-                            } catch (WebDAVServiceException e) {
-                                LOG.log(Level.WARNING, "Listing files failed", e);
-                                return;
-                            }
-
-                            files.stream().forEachOrdered(this::addResourceToPlaylistIfMedia);
-                        } else {
-                            addResourceToPlaylistIfMedia(res);
-                        }
-                    }
-                },
-                event -> {
-                    
-                    ResourceTableItem item = table.getSelectionModel().getSelectedItem();
-                    WebDAVResource res = item.getDavRes();
-                    
-                    Alert dialog = new Alert(AlertType.CONFIRMATION);
-                    dialog.setTitle("Delete Resource Confirmation");
-                    dialog.setHeaderText(format("Are you sure you want to delete resource ''{0}''?", 
-                            res.getAbsolutePath()));
-                    dialog.setContentText("Note that this cannot be undone!");
-
-                    Optional<ButtonType> input = dialog.showAndWait();
-                    if (input.get() == ButtonType.OK){
-
-                        try {
-                            service.delete(res);
-                            table.getItems().remove(item);
-                        } catch (WebDAVServiceException e) {
-                            
-                            // Show alert
-                            Alert alert = new Alert(AlertType.ERROR);
-                            alert.setTitle("Error");
-                            alert.setHeaderText(format("Failed to delete ''{0}''", res.getAbsolutePath()));
-                            alert.showAndWait();
-                        }
-                    }
-                }));
+                event -> onShowSelectedResourceProperties(), 
+                event -> onAddSelectedResourceToPlaylist(),
+                event -> onDeleteSelectedResource()));
     }
     
     private ResourceTableItem findResourceByName(String name) {
@@ -352,6 +303,54 @@ public class TableViewHelper {
             media.setUser(service.getHost().getUser());
             media.setPassword(service.getHost().getPassword());
             player.addToPlaylist(media);
+        }
+    }
+    
+    private void onShowSelectedResourceProperties() {
+        ComponentUtils.showResourcePropertiesDialog(
+                table.getSelectionModel().getSelectedItem().getDavRes());
+    }
+    
+    private void onAddSelectedResourceToPlaylist() {
+        WebDAVResource res = table.getSelectionModel().getSelectedItem().getDavRes();
+        if (player != null) {
+            if (res.isDirectory()) {
+
+                List<WebDAVResource> files;
+                try {
+                    
+                    // TODO This should be an async task
+                    files = service.listFiles(res.getAbsolutePath());
+                } catch (WebDAVServiceException e) {
+                    LOG.log(Level.WARNING, "Listing files failed", e);
+                    return;
+                }
+
+                files.stream().forEachOrdered(this::addResourceToPlaylistIfMedia);
+            } else {
+                addResourceToPlaylistIfMedia(res);
+            }
+        }
+    }
+    
+    private void onDeleteSelectedResource() {
+        ResourceTableItem item = table.getSelectionModel().getSelectedItem();
+        WebDAVResource res = item.getDavRes();
+        
+        Alert dialog = ComponentUtils.createResourceDeletionDialog(res.getAbsolutePath());
+        Optional<ButtonType> input = dialog.showAndWait();
+        if (input.get() == ButtonType.OK){
+            try {
+                service.delete(res);
+                table.getItems().remove(item);
+            } catch (WebDAVServiceException e) {
+                
+                // Show alert
+                Alert alert = new Alert(AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setHeaderText(format("Failed to delete ''{0}''", res.getAbsolutePath()));
+                alert.showAndWait();
+            }
         }
     }
 }
