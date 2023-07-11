@@ -44,12 +44,15 @@ public class ImageThumbService {
         File file = createFileForResource(res);
         if(!file.exists()) {
             
-            LOG.info(format("Saving thumb for: {0}", res.getAbsolutePath()));
+            String path = res.getAbsolutePath();
+            LOG.info(format("Saving thumb for: {0}", path));
+            
+            String extension = path.substring(path.lastIndexOf('.') + 1);
             
             FileOutputStream os = null;
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(image, null), "jpg", 
-                        os = FileUtils.openOutputStream(createFileForResource(res)));
+                ImageIO.write(SwingFXUtils.fromFXImage(image, null), extension, 
+                        os = FileUtils.openOutputStream(file));
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, e.getMessage(), e);
             } finally {

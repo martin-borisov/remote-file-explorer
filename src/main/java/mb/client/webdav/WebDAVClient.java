@@ -48,7 +48,7 @@ import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
 import mb.client.webdav.tasks.DownloadFileTask;
 
-// TODO When an image (file) is deleted and reuploaded the thumb doesn't show anymore
+// TODO Drag and drop support in grid view
 public class WebDAVClient extends Application {
     
     private static final Logger LOG = Logger.getLogger(WebDAVClient.class.getName());
