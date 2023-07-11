@@ -29,17 +29,17 @@ public class UploadFileTask extends Task<File> {
         // Initial status
         updateTitle(MessageFormat.format("Uploading ''{0}''", file));
         
+        String path;
         try {
-            service.upload(res, file);
+            path = service.upload(res, file);
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Error uploading file", e);
-            updateMessage(e.getMessage());
             updateProgress(1, 1);
             return null;
         }
         
         // Final status
-        updateMessage(MessageFormat.format("''{0}'' uploaded successfully", file));
+        updateMessage(path);
         updateProgress(1, 1);
         return file;
     }

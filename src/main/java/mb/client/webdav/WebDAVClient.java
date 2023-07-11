@@ -48,8 +48,6 @@ import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
 import mb.client.webdav.tasks.DownloadFileTask;
 
-// TODO When a file is deleted the grid is not refreshed and vice versa
-// TODO When a file is uploaded the table and grid are not refreshed
 // TODO When an image (file) is deleted and reuploaded the thumb doesn't show anymore
 public class WebDAVClient extends Application {
     

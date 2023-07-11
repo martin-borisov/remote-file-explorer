@@ -119,7 +119,6 @@ public class GridView extends TilePane {
                                 try {
                                     service.delete(res);
                                     fileList.remove(item);
-                                    //getChildren().remove(box);
                                 } catch (WebDAVServiceException e) {
                                     
                                     // Show alert

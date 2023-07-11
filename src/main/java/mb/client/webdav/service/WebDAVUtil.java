@@ -1,5 +1,6 @@
 package mb.client.webdav.service;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,12 +33,15 @@ public class WebDAVUtil {
     }
     
     /**
-     * Utility to start a task 
+     * Utility to start a task
+     * @param task The {@link Runnable} to start
+     * @return The same {@link Runnable} returned for convenience
      */
-    public static void startTask(Runnable task) {
+    public static Runnable startTask(Runnable task) {
         Thread th = new Thread(task);
         th.setDaemon(true);
         th.start();
+        return task;
     }
     
     /**
@@ -99,11 +103,38 @@ public class WebDAVUtil {
     }
     
     /**
-     * Splits a path delimited by <code>/</code> in an array of elements.
+     * Splits a path delimited by <code>/</code> in an array of elements
      */
     public static String[] pathToElements(String path) {
         return Arrays.stream(path.split("/"))
                 .filter(s -> !s.isBlank())
                 .toArray(String[]::new);
+    }
+    
+    /**
+     * Properly encodes URI path segments
+     */
+    public static String encodeUrlPath(String pathSegment) {
+        final StringBuilder sb = new StringBuilder();
+
+        try {
+            for (int i = 0; i < pathSegment.length(); i++) {
+                final char c = pathSegment.charAt(i);
+
+                if (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || ((c >= '0') && (c <= '9')) || (c == '-')
+                        || (c == '.') || (c == '_') || (c == '~')) {
+                    sb.append(c);
+                } else {
+                    final byte[] bytes = String.valueOf(c).getBytes("UTF-8");
+                    for (byte b : bytes) {
+                        sb.append('%').append(Integer.toHexString((b >> 4) & 0xf)).append(Integer.toHexString(b & 0xf));
+                    }
+                }
+            }
+
+            return sb.toString();
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

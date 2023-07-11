@@ -222,6 +222,19 @@ public class TableViewHelper {
                             tree.getSelectionModel().getSelectedItem().getValue(), file);
                     tpv.getTasks().add(0, task);
                     WebDAVUtil.startTask(task);
+                    
+                    // Do stuff when upload is done
+                    task.setOnSucceeded(value -> {
+                        LOG.fine(format("Upload of ''{0}'' finished at ''{1}''", file.getAbsolutePath(), task.getMessage()));
+                        
+                        // Show uploaded resource
+                        try {
+                            List<WebDAVResource> res = service.list(task.getMessage(), 0);
+                            fileList.add(new ResourceTableItem(res.get(0)));
+                        } catch (WebDAVServiceException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
                 }
                 success = true;
             }

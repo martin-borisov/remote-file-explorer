@@ -6,8 +6,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,13 +36,17 @@ public class WebDAVService {
     }
     
     public List<WebDAVResource> list(String path) throws WebDAVServiceException {
+        return list(path, 1);
+    }
+    
+    public List<WebDAVResource> list(String path, int depth) throws WebDAVServiceException {
         try {
-            List<DavResource> list = sardine.list(buildURI(path));
+            List<DavResource> list = sardine.list(buildURI(path), depth);
             List<WebDAVResource> resources = new ArrayList<WebDAVResource>(list.size());
             for (DavResource sardineResource : list) {
                 
-                // Filter out parent, as it's returned with the list of children
-                if(!path.equals(sardineResource.getHref().toString())) {
+                // Filter out parent, as it's returned with the list of children, when not listing a single resource
+                if(depth == 0 || !path.equals(sardineResource.getHref().toString())) {
                     resources.add(WebDAVUtil.webDAVResourceFromSardineResource(sardineResource, host));
                 }
             }
@@ -106,7 +108,7 @@ public class WebDAVService {
         return file;
     }
     
-    public void upload(WebDAVResource parent, File localFile) throws WebDAVServiceException {
+    public String upload(WebDAVResource parent, File localFile) throws WebDAVServiceException {
         
         try {
             
@@ -116,12 +118,15 @@ public class WebDAVService {
                 parentPath = parentPath + "/";
             }
             
-            String fileName = URLEncoder.encode(localFile.getName(), Charset.defaultCharset());
+            String fileName = WebDAVUtil.encodeUrlPath(localFile.getName());
+            String absolutePath = parentPath + fileName;
             
             // Upload
-            sardine.put(buildURI(parentPath + fileName), localFile, 
+            sardine.put(buildURI(absolutePath), localFile, 
                     Files.probeContentType(localFile.toPath()));
-        } catch (IOException e) {
+            
+            return absolutePath;
+        } catch (Exception e) {
             throw new WebDAVServiceException("File upload failed", e);
         }
     }
