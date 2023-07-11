@@ -53,8 +53,7 @@ public class MockSardineImpl implements Sardine {
 
     @Override
     public List<DavResource> list(String url, int depth) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+        return list(url);
     }
 
     @Override
