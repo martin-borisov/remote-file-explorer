@@ -9,6 +9,8 @@ import java.text.MessageFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.FileUtils;
+
 import javafx.concurrent.Task;
 import javafx.util.Callback;
 import mb.client.webdav.model.WebDAVResource;
@@ -27,8 +29,8 @@ public class DownloadFileTask extends Task<File> {
         this.res = res;
     }
 
-    @Override
     // TODO Revisit all messages and progress updates (don't do them so often)
+    @Override
     protected File call() throws Exception {
         
         // Initial status
@@ -41,7 +43,8 @@ public class DownloadFileTask extends Task<File> {
                 public Void call(Integer bytesRead) {
                     totalByteCount += bytesRead;
                     updateProgress(totalByteCount, res.getSize());
-                    updateMessage(MessageFormat.format("{0,number,#} bytes downloaded", totalByteCount));
+                    updateMessage(MessageFormat.format("{0} downloaded", 
+                            FileUtils.byteCountToDisplaySize(totalByteCount)));
                     return null;
                 }
             });

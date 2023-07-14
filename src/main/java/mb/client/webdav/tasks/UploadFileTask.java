@@ -43,5 +43,4 @@ public class UploadFileTask extends Task<File> {
         updateProgress(1, 1);
         return file;
     }
-
 }

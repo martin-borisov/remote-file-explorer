@@ -131,9 +131,9 @@ public class WebDAVService {
         }
     }
     
-    public void search(WebDAVResource parent, String query) throws WebDAVServiceException {
+    public List<DavResource> search(WebDAVResource parent, String query) throws WebDAVServiceException {
         try {
-            sardine.search(buildURI(parent.getAbsolutePath()), "EN", query);
+            return sardine.search(buildURI(parent.getAbsolutePath()), "DAV:basicsearch", query);
         } catch (IOException e) {
             throw new WebDAVServiceException("Search error", e);
         }
@@ -144,6 +144,20 @@ public class WebDAVService {
             sardine.delete(buildURI(res.getAbsolutePath()));
         } catch (IOException e) {
             throw new WebDAVServiceException(format("Failed to delete resource ''{0}''", res.getAbsolutePath()), e);
+        }
+    }
+    
+    public void move(WebDAVResource src, WebDAVResource dest) throws WebDAVServiceException {
+        if(!dest.isDirectory()) {
+            throw new WebDAVServiceException(
+                    format("Destination ''{0}'' is not a directory", dest.getAbsolutePath()));
+        }
+        
+        try {
+            sardine.move(buildURI(src.getAbsolutePath()), buildURI(dest.getAbsolutePath()) + src.getName(), false);
+        } catch (IOException e) {
+            throw new WebDAVServiceException(format("Failed to move resource ''{0}'' to ''{1}''", 
+                    src.getAbsolutePath(), dest.getAbsolutePath()), e);
         }
     }
     

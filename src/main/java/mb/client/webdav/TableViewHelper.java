@@ -30,7 +30,11 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.ResourceContextMenu;
@@ -50,6 +54,7 @@ public class TableViewHelper {
     private static final Logger LOG = Logger.getLogger(TableViewHelper.class.getName());
     private static final ConfigService config = ConfigService.getInstance();
     private static final Collator DEFAULT_COLLATOR = Collator.getInstance();
+    private static final DataFormat WEBDAV_RESOURCE_PATH = new DataFormat("webdav/resourcepath");
     
     private WebDAVService service;
     private ObservableList<ResourceTableItem> fileList;
@@ -83,7 +88,7 @@ public class TableViewHelper {
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         table.setStyle("-fx-border-width: 0; -fx-border-color: transparent; -fx-table-cell-border-color: transparent;"); // Hide border
         
-        // Row double click
+        // Row double click and drag & drop
         table.setRowFactory(tv -> {
             TableRow<ResourceTableItem> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -91,7 +96,12 @@ public class TableViewHelper {
                     onRowDoubleClick(row.getItem());
                 }
             });
-            return row ;
+            
+            row.setOnDragDetected(event -> onRowDragDetected(row, event));
+            row.setOnDragEntered(event -> onRowDragEntered(row, event));
+            row.setOnDragOver(event -> onRowDragOver(row, event));
+            row.setOnDragDropped(event -> onRowDragDropped(row, event));
+            return row;
         });
         
         // Explicit sort is needed to preserve sorting when updating table data
@@ -174,79 +184,6 @@ public class TableViewHelper {
         
         table.getColumns().addAll(Arrays.asList(iconCol, nameCol, typeCol, sizeCol, createdCol, modifiedCol));
         table.setItems(fileList);
-        
-        // Drag and drop support
-        /*
-        table.setOnDragDetected((event) -> {
-            System.out.println("drag detected");
-            
-            //WebDAVResource res = table.getSelectionModel().getSelectedItem();
-            
-            // TODO Allow drag and drop of downloaded files
-            Dragboard db = table.startDragAndDrop(TransferMode.COPY);
-            ClipboardContent cb = new ClipboardContent();
-            cb.putFiles(Arrays.asList(new File("/Users/mborisov/20210703_203655.jpg")));
-            db.setContent(cb);
-            
-            event.consume();
-        });
-        */
-        
-//        table.setOnDragDone((event) -> {
-//            System.out.println("drag done -> " + event.getTarget());
-//        });
-        
-//        table.setOnDragEntered((event) -> {
-//            System.out.println("drag entered -> " + event.getTransferMode() + 
-//                    " " + event.getDragboard().getFiles().size());
-//            event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
-//            event.consume();
-//        });
-        
-        table.setOnDragOver((event) -> {
-            if(event.getGestureSource() != table && 
-                    event.getDragboard().hasFiles()) {
-                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
-            }
-            event.consume();
-        });
-        
-        // External file is dropped
-        table.setOnDragDropped((event) -> {
-            boolean success = false;
-            Dragboard db = event.getDragboard();
-            if(db.hasFiles()) {
-                
-                for (File file : db.getFiles()) {
-                    UploadFileTask task = new UploadFileTask(service,  
-                            tree.getSelectionModel().getSelectedItem().getValue(), file);
-                    tpv.getTasks().add(0, task);
-                    WebDAVUtil.startTask(task);
-                    
-                    // Do stuff when upload is done
-                    task.setOnSucceeded(value -> {
-                        LOG.fine(format("Upload of ''{0}'' finished at ''{1}''", file.getAbsolutePath(), task.getMessage()));
-                        
-                        // Show uploaded resource
-                        try {
-                            List<WebDAVResource> res = service.list(task.getMessage(), 0);
-                            fileList.add(new ResourceTableItem(res.get(0)));
-                        } catch (WebDAVServiceException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                }
-                success = true;
-            }
-            
-            event.setDropCompleted(success);
-            event.consume();
-        });
-        
-//        table.setOnDragExited((event) -> {
-//            System.out.println("drag exited");
-//        });
-        
         return table;
     }
     
@@ -363,6 +300,127 @@ public class TableViewHelper {
                 alert.setTitle("Error");
                 alert.setHeaderText(format("Failed to delete ''{0}''", res.getAbsolutePath()));
                 alert.showAndWait();
+            }
+        }
+    }
+    
+    /* Row drag & drop */
+    
+    private void onRowDragDetected(TableRow<ResourceTableItem> row, MouseEvent event) {
+        if(!row.isEmpty()) {
+
+            WebDAVResource res = row.getItem().getDavRes();
+            LOG.fine(format("Drag from row ''{0}'' detected", res.getAbsolutePath()));
+
+            Dragboard db = row.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent cb = new ClipboardContent();
+            cb.put(WEBDAV_RESOURCE_PATH, res.getAbsolutePath());
+            db.setContent(cb);
+            event.consume();
+        }
+    }
+    
+    private void onRowDragEntered(TableRow<ResourceTableItem> row, DragEvent event) {
+        
+        // Indicate drag is happening on directories only
+        if(!row.isEmpty() && row.getItem().getDavRes().isDirectory()) {
+            table.getSelectionModel().select(row.getIndex());
+            event.consume();
+        }
+    }
+    
+    private void onRowDragOver(TableRow<ResourceTableItem> row, DragEvent event) {
+        Dragboard db = event.getDragboard();
+        
+        // Allow drops from OS by not excluding empty rows
+        if(row.isEmpty()) {
+            event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+            event.consume();
+        } else if(row.getItem().getDavRes().isDirectory()) {
+            if(db.hasContent(WEBDAV_RESOURCE_PATH) &&
+                    !((String) db.getContent(WEBDAV_RESOURCE_PATH)).equals(row.getItem().getDavRes().getAbsolutePath())) {
+                event.acceptTransferModes(TransferMode.MOVE);
+                event.consume();
+            } else {
+                // TODO Accept drop OS file in directory represented by this row
+            }
+        }
+    }
+    
+    private void onRowDragDropped(TableRow<ResourceTableItem> row, DragEvent event) {
+        Dragboard db = event.getDragboard();
+        if(row.isEmpty()) {
+            if (db.hasFiles()) {
+
+                // Upload OS file
+                boolean success = false;
+                if (db.hasFiles()) {
+
+                    for (File file : db.getFiles()) {
+                        LOG.fine(format("''{0}'' dropped on empty row -> attempt UPLOAD", file.getAbsolutePath()));
+
+                        UploadFileTask task = new UploadFileTask(service,
+                                tree.getSelectionModel().getSelectedItem().getValue(), file);
+                        tpv.getTasks().add(0, task);
+                        WebDAVUtil.startTask(task);
+
+                        // Do stuff when upload is done
+                        task.setOnSucceeded(value -> {
+                            LOG.fine(format("Upload of ''{0}'' finished at ''{1}''", file.getAbsolutePath(),
+                                    task.getMessage()));
+
+                            // Show uploaded resource
+                            try {
+                                List<WebDAVResource> res = service.list(task.getMessage(), 0);
+                                fileList.add(new ResourceTableItem(res.get(0)));
+                            } catch (WebDAVServiceException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                    }
+                    success = true;
+                }
+
+                event.setDropCompleted(success);
+                event.consume();
+            }
+            
+        } else if(row.getItem().getDavRes().isDirectory()) {
+            WebDAVResource dest = row.getItem().getDavRes();
+            
+            // Probe move resource or copy OS file
+            if(db.hasContent(WEBDAV_RESOURCE_PATH) &&
+                !((String) db.getContent(WEBDAV_RESOURCE_PATH)).equals(dest.getAbsolutePath())) {
+                
+                // Move
+                String srcAbsolutePath = (String) event.getDragboard().getContent(WEBDAV_RESOURCE_PATH);
+                LOG.fine(format("''{0}'' dropped on row ''{1}'' -> attempt MOVE", srcAbsolutePath, row.getItem()));
+                
+                Alert dialog = ComponentUtils.createResourceMoveDialog(srcAbsolutePath);
+                Optional<ButtonType> input = dialog.showAndWait();
+                if (input.get() == ButtonType.OK){
+                    
+                    // Do move operation
+                    try {
+                        List<WebDAVResource> list = service.list(srcAbsolutePath, 0);
+                        if(list.size() == 1) {
+                            WebDAVResource src = list.get(0);
+                            service.move(src, row.getItem().getDavRes());
+                            Optional.of(findResourceByName(src.getName())).ifPresent(r -> fileList.remove(r));
+                            
+                        } else {
+                            throw new WebDAVServiceException(format("Resource ''{0}'' not found", srcAbsolutePath));
+                        }
+                    } catch (WebDAVServiceException e) {
+                        LOG.log(Level.SEVERE, e.getMessage(), e);
+                    }
+                }
+                
+                event.setDropCompleted(true);
+                event.consume();
+                
+            } else {
+                // TODO Upload in directory
             }
         }
     }

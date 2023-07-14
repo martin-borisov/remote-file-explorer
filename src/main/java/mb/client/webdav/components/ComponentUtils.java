@@ -64,15 +64,39 @@ public class ComponentUtils {
     }
     
     /**
+     * Creates a dialog to confirm resource move. Reused by table view and grid view.
+     * @param resName Resource name to be shown to the user
+     * @return Dialog to be used for move confirmation
+     */
+    public static Alert createResourceMoveDialog(String resName) {
+        return createResourceModificationDialog("Move Resource Confirmation", 
+                format("Are you sure you want to move resource ''{0}''?", resName), 
+                "Note that this cannot be undone!");
+    }
+    
+    /**
      * Creates a dialog to confirm resource deletion. Reused by table view and grid view.
      * @param resName Resource name to be shown to the user
      * @return Dialog to be used for deletion confirmation
      */
     public static Alert createResourceDeletionDialog(String resName) {
+        return createResourceModificationDialog("Delete Resource Confirmation", 
+                format("Are you sure you want to delete resource ''{0}''?", resName), 
+                "Note that this cannot be undone!");
+    }
+    
+    /**
+     * Creates a dialog to confirm resource modification. Reused by table view and grid view.
+     * @param title Dialog title
+     * @param header Dialog header
+     * @param content Dialog content
+     * @return
+     */
+    public static Alert createResourceModificationDialog(String title, String header, String content) {
         Alert dialog = new Alert(AlertType.CONFIRMATION);
-        dialog.setTitle("Delete Resource Confirmation");
-        dialog.setHeaderText(format("Are you sure you want to delete resource ''{0}''?", resName));
-        dialog.setContentText("Note that this cannot be undone!");
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText(content);
         return dialog;
     }
 }
