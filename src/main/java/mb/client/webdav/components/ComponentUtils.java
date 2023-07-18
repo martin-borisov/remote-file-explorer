@@ -90,10 +90,25 @@ public class ComponentUtils {
      * @param title Dialog title
      * @param header Dialog header
      * @param content Dialog content
-     * @return
+     * @return Dialog to be used for modification confirmation
      */
     public static Alert createResourceModificationDialog(String title, String header, String content) {
         Alert dialog = new Alert(AlertType.CONFIRMATION);
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText(content);
+        return dialog;
+    }
+    
+    /**
+     * Creates a generic alert or warning dialog
+     * @param title Dialog title
+     * @param header Dialog header
+     * @param content Dialog content
+     * @return Dialog used for showing an error to the user
+     */
+    public static Alert createWarningDialog(String title, String header, String content) {
+        Alert dialog = new Alert(AlertType.WARNING);
         dialog.setTitle(title);
         dialog.setHeaderText(header);
         dialog.setContentText(content);

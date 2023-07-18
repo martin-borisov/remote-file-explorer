@@ -1,5 +1,7 @@
 package mb.client.webdav;
 
+import static java.text.MessageFormat.format;
+
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.List;
@@ -11,6 +13,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
+import javafx.scene.control.Alert;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import mb.client.webdav.components.ComponentUtils;
@@ -197,6 +200,10 @@ public class TreeViewHelper {
                 files = service.list(treeItem.getValue().getAbsolutePath());
             } catch (WebDAVServiceException e) {
                 LOG.log(Level.WARNING, e.getMessage(), e);
+                Alert dialog = ComponentUtils.createWarningDialog("Warning", 
+                        format("Listing resources at ''{0}'' failed", treeItem.getValue().getAbsolutePath()), 
+                        e.getMessage());
+                dialog.showAndWait();
                 return;
             }
             
