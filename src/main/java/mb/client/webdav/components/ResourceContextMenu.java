@@ -8,14 +8,14 @@ import javafx.scene.control.MenuItem;
 
 public class ResourceContextMenu extends ContextMenu {
 
-    public ResourceContextMenu(EventHandler<ActionEvent> propsHandler, 
-            EventHandler<ActionEvent> playlistHandler, EventHandler<ActionEvent> deleteHandler) {
+    public ResourceContextMenu(EventHandler<ActionEvent> propsHandler, EventHandler<ActionEvent> playlistHandler, 
+            EventHandler<ActionEvent> deleteHandler, EventHandler<ActionEvent> createDirHandler) {
         super();
-        createMenuItems(propsHandler, playlistHandler, deleteHandler);
+        createMenuItems(propsHandler, playlistHandler, deleteHandler, createDirHandler);
     }
     
-    private void createMenuItems(EventHandler<ActionEvent> propsHandler, 
-            EventHandler<ActionEvent> playlistHandler, EventHandler<ActionEvent> deleteHandler) {
+    private void createMenuItems(EventHandler<ActionEvent> propsHandler, EventHandler<ActionEvent> playlistHandler, 
+            EventHandler<ActionEvent> deleteHandler, EventHandler<ActionEvent> createDirHandler) {
         
         if(propsHandler != null) {
             MenuItem propertiesMenuItem = new MenuItem("Properties", Icons.properties());
@@ -33,6 +33,12 @@ public class ResourceContextMenu extends ContextMenu {
             MenuItem deleteMenuItem = new MenuItem("Delete", Icons.delete());
             deleteMenuItem.setOnAction(deleteHandler);
             getItems().add(deleteMenuItem);
+        }
+        
+        if(createDirHandler != null) {
+            MenuItem createDirMenuItem = new MenuItem("Create Directory", Icons.folder());
+            createDirMenuItem.setOnAction(createDirHandler);
+            getItems().add(createDirMenuItem);
         }
        
        // Show/hide menu items based on node type

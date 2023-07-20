@@ -148,10 +148,7 @@ public class WebDAVService {
     }
     
     public void move(WebDAVResource src, WebDAVResource dest) throws WebDAVServiceException {
-        if(!dest.isDirectory()) {
-            throw new WebDAVServiceException(
-                    format("Destination ''{0}'' is not a directory", dest.getAbsolutePath()));
-        }
+        confirmResourceIsDirectory(dest);
         
         try {
             sardine.move(buildURI(src.getAbsolutePath()), buildURI(dest.getAbsolutePath()) + src.getName(), false);
@@ -159,6 +156,22 @@ public class WebDAVService {
             throw new WebDAVServiceException(format("Failed to move resource ''{0}'' to ''{1}''", 
                     src.getAbsolutePath(), dest.getAbsolutePath()), e);
         }
+    }
+    
+    public String createDirectory(WebDAVResource parent, String dirName) throws WebDAVServiceException {
+        confirmResourceIsDirectory(parent);
+        
+        String path = parent.getAbsolutePath();
+        dirName = WebDAVUtil.encodeUrlPath(dirName);
+        path = path.endsWith("/") ? path + dirName : path + "/" + dirName;
+        
+        try {
+            sardine.createDirectory(buildURI(path));
+        } catch (IOException e) {
+            throw new WebDAVServiceException(format("Failed to create directory at ''{0}''", path), e);
+        }
+        
+        return path;
     }
     
     public void disconnect() throws WebDAVServiceException {
@@ -178,5 +191,11 @@ public class WebDAVService {
     private String buildURI(String path) {
         return host.getBaseURI() + path;
     }
-
+    
+    private void confirmResourceIsDirectory(WebDAVResource res) throws WebDAVServiceException {
+        if(!res.isDirectory()) {
+            throw new WebDAVServiceException(
+                    format("Resource ''{0}'' is not a directory", res.getAbsolutePath()));
+        }
+    }
 }

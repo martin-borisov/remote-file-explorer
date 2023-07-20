@@ -174,7 +174,8 @@ public class TreeViewHelper {
                     fileList.clear();
                 }
             }
-        }));
+        },
+        null));
         
         // Show/hide menu items based on node type
         /*

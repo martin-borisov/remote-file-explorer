@@ -128,7 +128,8 @@ public class GridView extends TilePane {
                                     alert.showAndWait();
                                 }
                             }
-                        }
+                        },
+                        null
                     );
                 
                 Point loc = MouseInfo.getPointerInfo().getLocation();

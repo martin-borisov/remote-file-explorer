@@ -27,6 +27,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.SortType;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -235,7 +236,8 @@ public class TableViewHelper {
         table.setContextMenu(new ResourceContextMenu(
                 event -> onShowSelectedResourceProperties(), 
                 event -> onAddSelectedResourceToPlaylist(),
-                event -> onDeleteSelectedResource()));
+                event -> onDeleteSelectedResource(),
+                event -> onCreateDirectory()));
     }
     
     private ResourceTableItem findResourceByName(String name) {
@@ -285,8 +287,13 @@ public class TableViewHelper {
     
     private void onDeleteSelectedResource() {
         ResourceTableItem item = table.getSelectionModel().getSelectedItem();
-        WebDAVResource res = item.getDavRes();
         
+        // Check for empty row
+        if(item == null) {
+            return;
+        }
+        
+        WebDAVResource res = item.getDavRes();
         Alert dialog = ComponentUtils.createResourceDeletionDialog(res.getAbsolutePath());
         Optional<ButtonType> input = dialog.showAndWait();
         if (input.get() == ButtonType.OK){
@@ -294,14 +301,42 @@ public class TableViewHelper {
                 service.delete(res);
                 table.getItems().remove(item);
             } catch (WebDAVServiceException e) {
+                String msg = format("Failed to delete ''{0}''", res.getAbsolutePath());
+                LOG.log(Level.WARNING, msg, e);
                 
-                // Show alert
-                Alert alert = new Alert(AlertType.ERROR);
-                alert.setTitle("Error");
-                alert.setHeaderText(format("Failed to delete ''{0}''", res.getAbsolutePath()));
+                Alert alert = ComponentUtils.createAlertDialog(AlertType.ERROR, "Error", msg, e.getMessage());
                 alert.showAndWait();
             }
         }
+    }
+    
+    private void onCreateDirectory() {
+        ResourceTableItem item = table.getSelectionModel().getSelectedItem();
+        
+        // If row is empty create in parent directory
+        WebDAVResource res = item != null ? 
+                item.getDavRes() : tree.getSelectionModel().getSelectedItem().getValue();
+        
+        TextInputDialog dialog = ComponentUtils.createTextInputDialog("Create Directory", 
+                format("Create in ''{0}''", res.getAbsolutePath()), "Directory Name:", "New Folder");
+        dialog.showAndWait().ifPresent(name -> {
+            try {
+                
+                // Execute create
+                String dirPath = service.createDirectory(res, name);
+                
+                // Show created directory
+                List<WebDAVResource> dirRes = service.list(dirPath, 0);
+                fileList.add(new ResourceTableItem(dirRes.get(0)));
+                
+            } catch (WebDAVServiceException e) {
+                String msg = format("Failed to create directory ''{0}''", res.getAbsolutePath());
+                LOG.log(Level.WARNING, msg, e);
+                
+                Alert alert = ComponentUtils.createAlertDialog(AlertType.ERROR, "Error", msg, e.getMessage());
+                alert.showAndWait();
+            }
+        });
     }
     
     /* Row drag & drop */

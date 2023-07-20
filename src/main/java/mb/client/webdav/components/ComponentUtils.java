@@ -13,6 +13,7 @@ import org.controlsfx.property.BeanPropertyUtils;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import mb.client.webdav.model.WebDAVResource;
@@ -87,13 +88,23 @@ public class ComponentUtils {
     
     /**
      * Creates a dialog to confirm resource modification. Reused by table view and grid view.
-     * @param title Dialog title
-     * @param header Dialog header
-     * @param content Dialog content
-     * @return Dialog to be used for modification confirmation
      */
     public static Alert createResourceModificationDialog(String title, String header, String content) {
-        Alert dialog = new Alert(AlertType.CONFIRMATION);
+        return createAlertDialog(AlertType.CONFIRMATION, title, header, content);
+    }
+    
+    /**
+     * Creates a generic alert or warning dialog
+     */
+    public static Alert createWarningDialog(String title, String header, String content) {
+        return createAlertDialog(AlertType.WARNING, title, header, content);
+    }
+    
+    /**
+     * Creates a generic dialog
+     */
+    public static Alert createAlertDialog(AlertType type, String title, String header, String content) {
+        Alert dialog = new Alert(type);
         dialog.setTitle(title);
         dialog.setHeaderText(header);
         dialog.setContentText(content);
@@ -101,14 +112,11 @@ public class ComponentUtils {
     }
     
     /**
-     * Creates a generic alert or warning dialog
-     * @param title Dialog title
-     * @param header Dialog header
-     * @param content Dialog content
-     * @return Dialog used for showing an error to the user
+     * Creates a prompt dialog
      */
-    public static Alert createWarningDialog(String title, String header, String content) {
-        Alert dialog = new Alert(AlertType.WARNING);
+    public static TextInputDialog createTextInputDialog(
+            String title, String header, String content, String defaultVal) {
+        TextInputDialog dialog = new TextInputDialog(defaultVal);
         dialog.setTitle(title);
         dialog.setHeaderText(header);
         dialog.setContentText(content);
