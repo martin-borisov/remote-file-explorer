@@ -3,8 +3,10 @@ package mb.client.webdav.components;
 
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 
 public class ResourceContextMenu extends ContextMenu {
 
@@ -16,30 +18,12 @@ public class ResourceContextMenu extends ContextMenu {
     
     private void createMenuItems(EventHandler<ActionEvent> propsHandler, EventHandler<ActionEvent> playlistHandler, 
             EventHandler<ActionEvent> deleteHandler, EventHandler<ActionEvent> createDirHandler) {
-        
-        if(propsHandler != null) {
-            MenuItem propertiesMenuItem = new MenuItem("Properties", Icons.properties());
-            propertiesMenuItem.setOnAction(propsHandler);
-            getItems().add(propertiesMenuItem);
-        }
-        
-        if(playlistHandler != null) {
-            MenuItem addToPlaylistMenuItem = new MenuItem("Add to Playlist", Icons.play());
-            addToPlaylistMenuItem.setOnAction(playlistHandler);
-            getItems().add(addToPlaylistMenuItem);
-        }
-        
-        if(deleteHandler != null) {
-            MenuItem deleteMenuItem = new MenuItem("Delete", Icons.delete());
-            deleteMenuItem.setOnAction(deleteHandler);
-            getItems().add(deleteMenuItem);
-        }
-        
-        if(createDirHandler != null) {
-            MenuItem createDirMenuItem = new MenuItem("Create Directory", Icons.folder());
-            createDirMenuItem.setOnAction(createDirHandler);
-            getItems().add(createDirMenuItem);
-        }
+        createMenuItem("Add to Playlist", Icons.play(), playlistHandler);
+        createMenuItem("Create Directory", Icons.createFoler(), createDirHandler);
+        getItems().add(new SeparatorMenuItem());
+        createMenuItem("Delete", Icons.delete(), deleteHandler);
+        getItems().add(new SeparatorMenuItem());
+        createMenuItem("Properties", Icons.properties(), propsHandler);
        
        // Show/hide menu items based on node type
        /*
@@ -52,5 +36,13 @@ public class ResourceContextMenu extends ContextMenu {
            }
        });
        */
+    }
+    
+    private void createMenuItem(String text, Node graphic, EventHandler<ActionEvent> handler) {
+        if(handler != null) {
+            MenuItem item = new MenuItem(text, graphic);
+            item.setOnAction(handler);
+            getItems().add(item);
+        }
     }
 }

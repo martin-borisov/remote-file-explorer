@@ -20,6 +20,11 @@ public class Icons {
         return icon;
     }
     
+    public static FontIcon createFoler() {
+        FontIcon icon = new FontIcon(FontAwesomeSolid.FOLDER_PLUS);
+        return icon;
+    }
+    
     public static FontIcon server() {
         FontIcon icon = new FontIcon(FontAwesomeSolid.SERVER);
         icon.setIconColor(Color.LIGHTBLUE);
