@@ -207,11 +207,9 @@ public class TableViewHelper {
                                 selectTreeItemIfSameAsTableItem(res, selItem);
                             }
                         }
-
                     });
                 }
             }
-            
         } else {
             
             // Download files

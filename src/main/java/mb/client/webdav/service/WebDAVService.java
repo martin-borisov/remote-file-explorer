@@ -151,7 +151,8 @@ public class WebDAVService {
         confirmResourceIsDirectory(dest);
         
         try {
-            sardine.move(buildURI(src.getAbsolutePath()), buildURI(dest.getAbsolutePath()) + src.getName(), false);
+            sardine.move(buildURI(src.getAbsolutePath()), 
+                    buildURI(dest.getAbsolutePath()) + WebDAVUtil.encodeUrlPath(src.getName()), false);
         } catch (IOException e) {
             throw new WebDAVServiceException(format("Failed to move resource ''{0}'' to ''{1}''", 
                     src.getAbsolutePath(), dest.getAbsolutePath()), e);
