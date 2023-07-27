@@ -2,6 +2,7 @@ package mb.client.webdav.service;
 
 import static java.text.MessageFormat.format;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,14 +13,15 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import mb.client.webdav.model.WebDAVResource;
 
 public class ImageThumbService {
     
+    private static final String DEFAULT_EXTENSION = "jpg";
     private static final Logger LOG = Logger.getLogger(ImageThumbService.class.getName());
     private static ImageThumbService ref;
     
@@ -39,7 +41,7 @@ public class ImageThumbService {
         return createFileForResource(res).exists();
     }
     
-    public File saveThumb(WebDAVResource res, Image image) {
+    public File saveThumb(WebDAVResource res, BufferedImage image) {
         
         File file = createFileForResource(res);
         if(!file.exists()) {
@@ -47,11 +49,9 @@ public class ImageThumbService {
             String path = res.getAbsolutePath();
             LOG.info(format("Saving thumb for: {0}", path));
             
-            String extension = path.substring(path.lastIndexOf('.') + 1);
-            
             FileOutputStream os = null;
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(image, null), extension, 
+                ImageIO.write(image, DEFAULT_EXTENSION, 
                         os = FileUtils.openOutputStream(file));
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, e.getMessage(), e);
@@ -82,7 +82,8 @@ public class ImageThumbService {
     }
     
     private static File createFileForResource(WebDAVResource res) {
-        return new File("thumbs/" + res.getBaseURI().getHost() + res.getAbsolutePath());
+        return new File("thumbs/" + res.getBaseURI().getHost() + 
+                FilenameUtils.removeExtension(res.getAbsolutePath()) + "." + DEFAULT_EXTENSION);
     }
 }
  

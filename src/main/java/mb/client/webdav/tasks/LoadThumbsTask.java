@@ -2,6 +2,7 @@ package mb.client.webdav.tasks;
 
 import static java.text.MessageFormat.format;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -10,14 +11,20 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.imageio.ImageIO;
+
 import org.apache.commons.io.IOUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
 import javafx.concurrent.Task;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import mb.client.webdav.model.ResourceTableItem;
 import mb.client.webdav.service.ImageThumbService;
 import mb.client.webdav.service.WebDAVService;
 import mb.client.webdav.service.WebDAVServiceException;
+import net.coobird.thumbnailator.Thumbnails;
 
 public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
     
@@ -45,7 +52,7 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
                 break;
             }
             
-            if(item.isImage()) {
+            if(item.isImage() || item.isPdf()) {
                 LOG.fine(format("Start processing thumb for {0}", item));
                 
                 Image image = null;
@@ -56,14 +63,33 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
                     LOG.fine(format("Fetched existing thumb for {0}", item));
                 } else {
                     
+                    BufferedImage buffImg = null;
                     InputStream is = null;
                     try {
-                        is = service.getContent(item.getDavRes());
                         
-                        // TODO "Smooth" should be a configurable property
-                        image = new Image(is, width, width, true, true);
-                        File file = its.saveThumb(item.getDavRes(), image);
+                        // Fetch resource content
+                        is = service.getContent(item.getDavRes());
+                        if(item.isImage()) {
+                            buffImg = ImageIO.read(is);
+                        } else {
+                            PDDocument pdf = PDDocument.load(is);
+                            PDFRenderer renderer = new PDFRenderer(pdf);
+                            buffImg = renderer.renderImage(0);
+                        }
+                        
+                        // Resize
+                        buffImg = Thumbnails.of(buffImg)
+                                .size(width, width)
+                                .keepAspectRatio(true)
+                                .asBufferedImage();
+                        
+                        // Save
+                        File file = its.saveThumb(item.getDavRes(), buffImg);
                         LOG.fine(format("Saved new thumb for {0}, at {1}", item, file.getAbsolutePath()));
+                        
+                        // Convert
+                        image = SwingFXUtils.toFXImage(buffImg, null);
+                        
                     } catch (WebDAVServiceException e) {
                         LOG.log(Level.WARNING, e.getMessage(), e);
                     } finally {

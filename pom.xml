@@ -64,12 +64,16 @@
     </build>
 
     <dependencies>
+    
+        <!-- Test -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Runtime -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -153,6 +157,18 @@
                     <artifactId>tritonus-share</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        
+        <!-- PDF support -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.27</version>
+        </dependency>
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>[0.4, 0.5)</version>
         </dependency>
     </dependencies>
 </project>

@@ -18,6 +18,10 @@ public class ResourceTableItem {
         return getType().startsWith("image");
     }
     
+    public boolean isPdf() {
+        return "application/pdf".equals(getType());
+    }
+    
     public FontIcon getIcon() {
         FontIcon icon = Icons.file();
         if (isDirectory()) {
