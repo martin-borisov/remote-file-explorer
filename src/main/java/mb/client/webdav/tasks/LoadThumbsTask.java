@@ -5,7 +5,6 @@ import static java.text.MessageFormat.format;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -33,17 +32,20 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
     private WebDAVService service;
     private List<ResourceTableItem> items;
     private int width;
+    private Map<ResourceTableItem, Image> thumbMap;
     
-    public LoadThumbsTask(WebDAVService service, List<ResourceTableItem> items, int width) {
+    public LoadThumbsTask(WebDAVService service, List<ResourceTableItem> items, 
+            Map<ResourceTableItem, Image> thumbMap, int width) {
         this.service = service;
         this.items = items;
         this.width = width;
+        this.thumbMap = thumbMap;
     }
 
     @Override
     protected Map<ResourceTableItem, Image> call() throws Exception {
         
-        Map<ResourceTableItem, Image> map = new HashMap<>(items.size());
+        thumbMap.clear();
         for (ResourceTableItem item : items) {
             
             // Check if cancelled
@@ -97,15 +99,13 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
                     }
                 }
                 
-                map.put(item, image);
-                
-                // Try to update during processing, but this is not guaranteed to succeed
-                updateValue(map);
-                updateProgress(map.size(), items.size());
+                // Update
+                thumbMap.put(item, image);
+                updateProgress(thumbMap.size(), items.size());
                 updateMessage("Loaded thumb for " + item.getName());
             }
         }
-        return map;
+        return thumbMap;
     }
 
 }

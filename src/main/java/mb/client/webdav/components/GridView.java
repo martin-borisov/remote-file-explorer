@@ -5,19 +5,22 @@ import static java.text.MessageFormat.format;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ListChangeListener.Change;
+import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
+import javafx.collections.ObservableMap;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -190,37 +193,34 @@ public class GridView extends TilePane {
     private void startLoadThumbsTask(List<ResourceTableItem> list, int width) {
         
         // Load image thumbs
-        currentLoadThumbsTask = new LoadThumbsTask(service, list, width);
-        currentLoadThumbsTask.valueProperty().addListener((obs, oldVal, newVal) -> {
-            LOG.fine(format("Thumb map updated with size {0}", newVal.size()));
-            updateGridThumbsWithImages(newVal);
+        ObservableMap<ResourceTableItem, Image> thumbMap = FXCollections.observableHashMap();
+        currentLoadThumbsTask = new LoadThumbsTask(service, list, thumbMap, width);
+
+        // Replace the icons with thumbs as they get loaded
+        thumbMap.addListener(new MapChangeListener<ResourceTableItem, Image>() {
+            public void onChanged(Change<? extends ResourceTableItem, ? extends Image> change) {
+                if(change.wasAdded()) {
+                    LOG.fine(format("Thumb map updated; size: {0}", change.getMap().size()));
+                    findAndUpdateGridThumbWithImage(change.getKey(), change.getValueAdded());
+                }
+            }
         });
         
-        // Since updating the value on the fly from the task is not guaranteed,
-        // make sure all thumbs are loaded when task is finally done
+        // Reset progress when done
         currentLoadThumbsTask.setOnSucceeded(evt -> {
-            
-            // Value can be null if task is cancelled
-            if(currentLoadThumbsTask.getValue() != null) {
-                LOG.fine(format("Task done with final size {0}", currentLoadThumbsTask.getValue().size()));
-                updateGridThumbsWithImages(currentLoadThumbsTask.getValue());
-            }
-            
-            // Clear properties
             messageProperty.setValue(null);
             progressProperty.setValue(0);
         });
         
-        // Show message and progress on status bar
+        // Show message and progress on status bar while loading
         currentLoadThumbsTask.messageProperty().addListener((obs, oldVal, newVal) -> {
-            //statusBar.setText(newVal);
             messageProperty.setValue(newVal);
         });
         currentLoadThumbsTask.progressProperty().addListener((obs, oldVal, newVal) -> {
-            //statusBar.setProgress(newVal.doubleValue());
             progressProperty.setValue(newVal);
         });
         
+        // Trigger the task
         WebDAVUtil.startTask(currentLoadThumbsTask);
     }
     
@@ -231,17 +231,14 @@ public class GridView extends TilePane {
     }
     
     /**
-     * Updates the currently visible grid icons with actual thumbs
+     * Updates the icon of the given node represented by a {@link ResourceTableItem} with a thumb
      */
-    private void updateGridThumbsWithImages(Map<ResourceTableItem, Image> thumbMap) {
-        for (Node node : getChildren()) {
-            for (ResourceTableItem res : thumbMap.keySet()) {
-                if(res.equals(node.getUserData())) {
-                    ((VBox) node).getChildren().remove(0);
-                    ((VBox) node).getChildren().add(0, new ImageView(thumbMap.get(res)));
-                    break;
-                }
-            }
-        }
+    private void findAndUpdateGridThumbWithImage(ResourceTableItem res, Image image) {
+        getChildren().stream().filter(node -> node.getUserData().equals(res)).findFirst().ifPresent((node) -> {
+            Platform.runLater(() -> {
+                ((VBox) node).getChildren().remove(0);
+                ((VBox) node).getChildren().add(0, new ImageView(image));
+            });
+        });
     }
 }
