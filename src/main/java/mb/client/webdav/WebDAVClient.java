@@ -3,6 +3,7 @@ package mb.client.webdav;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.controlsfx.control.BreadCrumbBar;
 import org.controlsfx.control.MasterDetailPane;
 import org.controlsfx.control.SegmentedButton;
 import org.controlsfx.control.StatusBar;
@@ -36,6 +37,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.GridView;
 import mb.client.webdav.components.Icons;
 import mb.client.webdav.media.MPlayer;
@@ -58,6 +60,7 @@ public class WebDAVClient extends Application {
     private SplitPane splitPane;
     private HostMgmtHelper hostsHelper;
     private ComboBox<WebDAVHost> hostsComboBox;
+    private BreadCrumbBar<WebDAVResource> breadCrumbBar;
     private TreeViewHelper treeHelper;
     private TreeView<WebDAVResource> treeView;
     private TableViewHelper tableHelper;
@@ -84,9 +87,10 @@ public class WebDAVClient extends Application {
         // Root layout
         BorderPane borderPane = new BorderPane();
         
-        // Button bar with host selection and resource view toggle
+        // Button bar with host selection, resource view toggle, bread crumb, etc
         HBox buttonBar = new HBox(new Label("Host"), createHostComboBox(), createAddHostButton(),
                 new Separator(Orientation.VERTICAL), createViewToggle(showTable),
+                new Separator(Orientation.VERTICAL), createBreadCrumbBar(), ComponentUtils.createHBoxSpacer(), 
                 new Separator(Orientation.VERTICAL), createGoToParentButton());
         buttonBar.setSpacing(5);
         buttonBar.setPadding(new Insets(5));
@@ -200,7 +204,12 @@ public class WebDAVClient extends Application {
     
     private TreeView<WebDAVResource> createTree() {
         treeHelper = new TreeViewHelper(service, fileList, hostsHelper);
-        return treeView = treeHelper.getTree();
+        
+        // Bind bread crumb to tree view
+        treeView = treeHelper.getTree();
+        breadCrumbBar.selectedCrumbProperty().bind(treeView.getSelectionModel().selectedItemProperty());
+        
+        return treeView;
     }
     
     private TableView<ResourceTableItem> createTable() {
@@ -281,6 +290,12 @@ public class WebDAVClient extends Application {
             treeHelper.selectParent();
         });
         return button;
+    }
+    
+    private BreadCrumbBar<WebDAVResource> createBreadCrumbBar() {
+        breadCrumbBar = new BreadCrumbBar<WebDAVResource>();
+        breadCrumbBar.setAutoNavigationEnabled(false);
+        return breadCrumbBar;
     }
     
     private void selectLastUsedHost() {

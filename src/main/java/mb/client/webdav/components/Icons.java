@@ -54,7 +54,6 @@ public class Icons {
     
     public static FontIcon arrowUp() {
         FontIcon icon = new FontIcon(FontAwesomeSolid.ARROW_UP);
-        icon.setIconColor(Color.GREEN);
         return icon;
     }
     

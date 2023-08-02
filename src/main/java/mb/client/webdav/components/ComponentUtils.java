@@ -14,6 +14,9 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import mb.client.webdav.model.WebDAVResource;
@@ -121,5 +124,14 @@ public class ComponentUtils {
         dialog.setHeaderText(header);
         dialog.setContentText(content);
         return dialog;
+    }
+    
+    /**
+     * Creates a simple growing spacer that can be used in a {@link HBox}
+     */
+    public static Region createHBoxSpacer() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
     }
 }

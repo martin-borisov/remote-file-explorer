@@ -77,6 +77,7 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
                             PDDocument pdf = PDDocument.load(is);
                             PDFRenderer renderer = new PDFRenderer(pdf);
                             buffImg = renderer.renderImage(0);
+                            pdf.close();
                         }
                         
                         // Resize
