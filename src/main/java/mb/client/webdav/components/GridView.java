@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import org.controlsfx.control.TaskProgressView;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import javafx.application.Platform;
@@ -18,6 +19,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ListChangeListener.Change;
+import javafx.concurrent.Task;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
@@ -28,6 +30,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
@@ -39,27 +44,33 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import mb.client.webdav.model.ResourceTableItem;
 import mb.client.webdav.model.WebDAVResource;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
+import mb.client.webdav.tasks.DownloadFileTask;
 import mb.client.webdav.tasks.LoadThumbsTask;
 
 public class GridView extends TilePane {
     
     private static final Logger LOG = Logger.getLogger(GridView.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private ObservableList<ResourceTableItem> fileList;
+    private TreeView<WebDAVResource> tree;
+    private TaskProgressView<Task<?>> tpv;
     private LoadThumbsTask currentLoadThumbsTask;
     private VBox selectedItem;
     private SimpleStringProperty messageProperty;
     private SimpleDoubleProperty progressProperty;
 
-    public GridView(WebDAVService service, ObservableList<ResourceTableItem> fileList, double hgap, double vgap) {
+    public GridView(ResourceRepositoryService service, ObservableList<ResourceTableItem> fileList, 
+            TreeView<WebDAVResource> tree, TaskProgressView<Task<?>> tpv, double hgap, double vgap) {
         super(hgap, vgap);
         setBackground(new Background(new BackgroundFill(Color.WHITE, CornerRadii.EMPTY, Insets.EMPTY)));
         this.service = service;
         this.fileList = fileList;
+        this.tree = tree;
+        this.tpv = tpv;
         createProperties();
         createListeners();
     }
@@ -70,6 +81,12 @@ public class GridView extends TilePane {
     }
     
     private void createListeners() {
+        this.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                onRowDoubleClick((ResourceTableItem) this.getSelectedItem().getUserData());
+            }
+        });
+        
         fileList.addListener(new ListChangeListener<ResourceTableItem>() {
             public void onChanged(Change<? extends ResourceTableItem> c) {
                 onFileListChanged(c);
@@ -93,9 +110,11 @@ public class GridView extends TilePane {
         // Label
         Label lbl = new Label(label);
         lbl.setMaxWidth(width);
+        lbl.setWrapText(true);
+        lbl.setTooltip(new Tooltip(label));
         
         VBox box = new VBox(icon, lbl);
-        box.setAlignment(Pos.CENTER);
+        box.setAlignment(Pos.TOP_CENTER);
         box.setPadding(new Insets(10));
         box.setUserData(item);
         getChildren().add(box);
@@ -151,7 +170,7 @@ public class GridView extends TilePane {
         return selectedItem;
     }
     
-    public void setService(WebDAVService service) {
+    public void setService(ResourceRepositoryService service) {
         this.service = service;
     }
     
@@ -162,6 +181,49 @@ public class GridView extends TilePane {
     private void deselectPrevious() {
         if(selectedItem != null) {
             selectedItem.setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+        }
+    }
+    
+    private void onRowDoubleClick(ResourceTableItem res) {
+        if(res.isDirectory()) {
+            
+            // Open directories
+            TreeItem<WebDAVResource> selItem = tree.getSelectionModel().getSelectedItem();
+            if(selItem != null) {
+                if(selItem.isExpanded()) {
+                    selectTreeItemIfSameAsGridItem(res, selItem);
+                } else {
+                    selItem.setExpanded(true);
+                
+                    // React when new items get added to the tree node (this happens asynchronously)
+                    selItem.getChildren().addListener(new ListChangeListener<TreeItem<WebDAVResource>>() {
+                        public void onChanged(Change<? extends TreeItem<WebDAVResource>> change) {
+                            change.next();
+                            if(change.wasAdded()) {
+                                selectTreeItemIfSameAsGridItem(res, selItem);
+                            }
+                        }
+                    });
+                }
+            }
+            
+        } else {
+            
+            // Download files
+            DownloadFileTask task = new DownloadFileTask(service,  res.getDavRes());
+            tpv.getTasks().add(0, task);
+            WebDAVUtil.startTask(task);
+        }
+    }
+    
+    private void selectTreeItemIfSameAsGridItem(ResourceTableItem tableItem,  TreeItem<WebDAVResource> treeItem) {
+        
+        // Select item which was double clicked
+        for (TreeItem<WebDAVResource> childItem : treeItem.getChildren()) {
+            if(tableItem.getName().equals(childItem.getValue().getName())) {
+                tree.getSelectionModel().select(childItem);
+                break;
+            }
         }
     }
     
@@ -189,6 +251,7 @@ public class GridView extends TilePane {
             change.getRemoved().forEach(this::removeItem);
         }
     }
+    
     
     private void startLoadThumbsTask(List<ResourceTableItem> list, int width) {
         

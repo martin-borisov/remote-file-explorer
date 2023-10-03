@@ -7,17 +7,17 @@ import java.util.logging.Logger;
 
 import javafx.concurrent.Task;
 import mb.client.webdav.model.WebDAVResource;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 
 public class UploadFileTask extends Task<File> {
     
     private static final Logger LOG = Logger.getLogger(UploadFileTask.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private WebDAVResource res;
     private File file;
     
-    public UploadFileTask(WebDAVService service, WebDAVResource res, File file) {
+    public UploadFileTask(ResourceRepositoryService service, WebDAVResource res, File file) {
         this.service = service;
         this.res = res;
         this.file = file;

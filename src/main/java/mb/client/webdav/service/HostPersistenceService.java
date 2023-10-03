@@ -14,13 +14,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import mb.client.webdav.model.WebDAVHost;
+import mb.client.webdav.model.ResourceHost;
 
 public class HostPersistenceService {
     
     private static final String FILE_PATH = "hosts.xml";
     private static HostPersistenceService ref;
-    private List<WebDAVHost> hosts;
+    private List<ResourceHost> hosts;
     
     public static HostPersistenceService getInstance() {
         synchronized (HostPersistenceService.class) {
@@ -35,16 +35,16 @@ public class HostPersistenceService {
         loadHosts();
     }
     
-    public List<WebDAVHost> getHosts() {
+    public List<ResourceHost> getHosts() {
         return Collections.unmodifiableList(hosts); 
     }
     
-    public void addHost(WebDAVHost host) {
+    public void addHost(ResourceHost host) {
         hosts.add(host);
         saveHosts();
     }
     
-    public boolean deleteHost(WebDAVHost host) {
+    public boolean deleteHost(ResourceHost host) {
         boolean success = hosts.remove(host);
         if(success) {
             saveHosts();
@@ -64,7 +64,7 @@ public class HostPersistenceService {
             }
             
             XMLDecoder dec = new XMLDecoder(new BufferedInputStream(fis));
-            hosts = (List<WebDAVHost>) dec.readObject();
+            hosts = (List<ResourceHost>) dec.readObject();
             dec.close();
         }
     }
@@ -79,7 +79,7 @@ public class HostPersistenceService {
         }
         
         XMLEncoder enc = new XMLEncoder(new BufferedOutputStream(fos));
-        enc.setPersistenceDelegate(WebDAVHost.class,
+        enc.setPersistenceDelegate(ResourceHost.class,
                 new DefaultPersistenceDelegate(new String[] {"baseURI", "root", "user", "password"}));
         enc.writeObject(hosts);
         enc.close();

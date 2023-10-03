@@ -2,6 +2,7 @@ package mb.client.webdav;
 
 import static java.text.MessageFormat.format;
 
+import java.io.File;
 import java.net.URI;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -22,7 +23,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import mb.client.webdav.model.WebDAVHost;
+import mb.client.webdav.components.ComponentUtils;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.WebDAVResource;
 import mb.client.webdav.service.HostPersistenceService;
 import mb.client.webdav.service.WebDAVService;
@@ -31,18 +33,19 @@ import mb.client.webdav.service.WebDAVUtil;
 
 public class HostMgmtHelper {
     
-    private ObservableList<WebDAVHost> hosts;
+    private ObservableList<ResourceHost> hosts;
     
     public HostMgmtHelper() {
         hosts = FXCollections.observableArrayList(
                 HostPersistenceService.getInstance().getHosts());
+        addLocalFsRoots();
     }
     
-    public ObservableList<WebDAVHost> getHosts() {
+    public ObservableList<ResourceHost> getHosts() {
         return hosts;
     }
 
-    public void triggerAddNewHost(Consumer<WebDAVHost> handler) {
+    public void triggerAddNewHost(Consumer<ResourceHost> handler) {
         createAndShowAddNewHostDialog().showAndWait().ifPresent(host -> {
             HostPersistenceService.getInstance().addHost(host);
             hosts.add(host);
@@ -50,7 +53,20 @@ public class HostMgmtHelper {
         });
     }
     
-    public boolean triggerRemoveHost(WebDAVHost host) {
+    public void triggerRemoveHost(ResourceHost host, Consumer<ResourceHost> handler) {
+        ComponentUtils.createConfirmationDialog("Remove Host", 
+                format("Are you sure you want to remove host ''{0}''?", host), 
+                "This cannot be undone!").showAndWait().ifPresent(type -> {
+                    if(ButtonType.OK == type) {
+                        if(HostPersistenceService.getInstance().deleteHost(host)) {
+                            hosts.remove(host);
+                            handler.accept(host);
+                        }
+                    }
+                });
+    }
+    
+    public boolean triggerRemoveHost(ResourceHost host) {
         boolean result = false;
         
         Alert dialog = new Alert(AlertType.CONFIRMATION);
@@ -67,9 +83,22 @@ public class HostMgmtHelper {
         return result;
     }
     
-    private Dialog<WebDAVHost> createAndShowAddNewHostDialog() {
+    private void addLocalFsRoots() { 
         
-        Dialog<WebDAVHost> dlg = new Dialog<>();
+        // TODO Windows: this is how local root appears in Hosts dropdown "file:/C:/"
+        File[] roots = File.listRoots();
+        if(roots != null) {
+            for (File root : roots) {
+                ResourceHost host = new ResourceHost(root.toURI(), root.getAbsolutePath(), null, null);
+                host.setLocal(true);
+                hosts.add(host);
+            }
+        }
+    }
+    
+    private Dialog<ResourceHost> createAndShowAddNewHostDialog() {
+        
+        Dialog<ResourceHost> dlg = new Dialog<>();
         dlg.setTitle("Add Host");
         dlg.setHeaderText("WebDAV Connection Properties");
         
@@ -107,7 +136,7 @@ public class HostMgmtHelper {
         // Create new WebDAVHost instance when save is clicked
         dlg.setResultConverter(button -> {
             if (button == saveButtonType) {
-                return new WebDAVHost(URI.create(baseUri.getText()), 
+                return new ResourceHost(URI.create(baseUri.getText()), 
                         root.getText(), user.getText(), pass.getText());
             }
             return null;
@@ -124,7 +153,7 @@ public class HostMgmtHelper {
             }
             
             // Try to connect
-            WebDAVHost host = new WebDAVHost(URI.create(baseUri.getText()), 
+            ResourceHost host = new ResourceHost(URI.create(baseUri.getText()), 
                     root.getText(), user.getText(), pass.getText());
             WebDAVService svc = new WebDAVService(host);
             svc.connect();

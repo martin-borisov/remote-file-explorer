@@ -44,7 +44,7 @@ import mb.client.webdav.media.MPlayer;
 import mb.client.webdav.model.ResourceTableItem;
 import mb.client.webdav.model.WebDAVResource;
 import mb.client.webdav.service.ConfigService;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
 import mb.client.webdav.tasks.DownloadFileTask;
@@ -57,14 +57,14 @@ public class TableViewHelper {
     private static final Collator DEFAULT_COLLATOR = Collator.getInstance();
     private static final DataFormat WEBDAV_RESOURCE_PATH = new DataFormat("webdav/resourcepath");
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private ObservableList<ResourceTableItem> fileList;
     private TreeView<WebDAVResource> tree;
     private TaskProgressView<Task<?>> tpv;
     private MPlayer player;
     private TableView<ResourceTableItem> table;
     
-    public TableViewHelper(WebDAVService service, ObservableList<ResourceTableItem> fileList,
+    public TableViewHelper(ResourceRepositoryService service, ObservableList<ResourceTableItem> fileList,
             TreeView<WebDAVResource> tree, TaskProgressView<Task<?>> tpv, MPlayer player) {
         this.service = service;
         this.fileList = fileList;
@@ -78,7 +78,7 @@ public class TableViewHelper {
         return table;
     }
     
-    public void setService(WebDAVService service) {
+    public void setService(ResourceRepositoryService service) {
         this.service = service;
     }
 
@@ -144,7 +144,10 @@ public class TableViewHelper {
         
         TableColumn<ResourceTableItem, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameCol.setPrefWidth(Double.valueOf(config.getOrCreateProperty("col.name.width", String.valueOf(300))));
+        nameCol.setPrefWidth(Double.valueOf(
+                config.getOrCreateProperty("col.name.width", String.valueOf(300))));
+        nameCol.setSortType(SortType.valueOf(
+                config.getOrCreateProperty("col.name.sorttype", String.valueOf(SortType.ASCENDING))));
         
         // Sorting by name (directory first)
         nameCol.setComparator((name1, name2) -> {
@@ -185,6 +188,13 @@ public class TableViewHelper {
         
         table.getColumns().addAll(Arrays.asList(iconCol, nameCol, typeCol, sizeCol, createdCol, modifiedCol));
         table.setItems(fileList);
+        
+        // This is needed to properly sort the table based on the saved state
+        // TODO Add all columns to sort order
+        table.getSortOrder().add(nameCol);
+        table.sort();
+        table.refresh();
+        
         return table;
     }
     

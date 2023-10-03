@@ -19,26 +19,29 @@ import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
 
 import javafx.util.Callback;
-import mb.client.webdav.model.WebDAVHost;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.WebDAVResource;
 
-public class WebDAVService {
+public class WebDAVService implements ResourceRepositoryService {
     
-    private WebDAVHost host;
+    private ResourceHost host;
     private Sardine sardine;
 
-    public WebDAVService(WebDAVHost host) {
+    public WebDAVService(ResourceHost host) {
         this.host = host;
     }
     
+    @Override
     public void connect() {
         sardine = SardineFactory.begin(host.getUser(), host.getPassword());
     }
     
+    @Override
     public List<WebDAVResource> list(String path) throws WebDAVServiceException {
         return list(path, 1);
     }
     
+    @Override
     public List<WebDAVResource> list(String path, int depth) throws WebDAVServiceException {
         try {
             List<DavResource> list = sardine.list(buildURI(path), depth);
@@ -56,14 +59,17 @@ public class WebDAVService {
         }
     }
     
+    @Override
     public List<WebDAVResource> listDirs(String path) throws WebDAVServiceException {
         return list(path).stream().filter(r -> r.isDirectory()).collect(Collectors.toList());
     }
     
+    @Override
     public List<WebDAVResource> listFiles(String path) throws WebDAVServiceException {
         return list(path).stream().filter(r -> !r.isDirectory()).collect(Collectors.toList());
     }
     
+    @Override
     public InputStream getContent(WebDAVResource res) throws WebDAVServiceException {
         
         InputStream is;
@@ -75,6 +81,7 @@ public class WebDAVService {
         return is;
     }
     
+    @Override
     public File download(WebDAVResource res, Callback<Integer, Void> callback) throws WebDAVServiceException {
         
         InputStream is = getContent(res);
@@ -108,6 +115,7 @@ public class WebDAVService {
         return file;
     }
     
+    @Override
     public String upload(WebDAVResource parent, File localFile) throws WebDAVServiceException {
         
         try {
@@ -131,6 +139,7 @@ public class WebDAVService {
         }
     }
     
+    @Override
     public List<DavResource> search(WebDAVResource parent, String query) throws WebDAVServiceException {
         try {
             return sardine.search(buildURI(parent.getAbsolutePath()), "DAV:basicsearch", query);
@@ -139,6 +148,7 @@ public class WebDAVService {
         }
     }
     
+    @Override
     public void delete(WebDAVResource res) throws WebDAVServiceException {
         try {
             sardine.delete(buildURI(res.getAbsolutePath()));
@@ -147,6 +157,7 @@ public class WebDAVService {
         }
     }
     
+    @Override
     public void move(WebDAVResource src, WebDAVResource dest) throws WebDAVServiceException {
         confirmResourceIsDirectory(dest);
         
@@ -159,6 +170,7 @@ public class WebDAVService {
         }
     }
     
+    @Override
     public String createDirectory(WebDAVResource parent, String dirName) throws WebDAVServiceException {
         confirmResourceIsDirectory(parent);
         
@@ -175,6 +187,7 @@ public class WebDAVService {
         return path;
     }
     
+    @Override
     public void disconnect() throws WebDAVServiceException {
         if(sardine != null) {
             try {
@@ -185,7 +198,8 @@ public class WebDAVService {
         }
     }
     
-    public WebDAVHost getHost() {
+    @Override
+    public ResourceHost getHost() {
         return host;
     }
 

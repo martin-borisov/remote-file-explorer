@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>mb.client</groupId>
     <artifactId>webdav</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -31,7 +31,7 @@
                     <options>
                         <option>-Djava.util.logging.config.file=${basedir}/logging.properties</option>
                         <option>-DTraceAudioFileReader=true</option>
-                        <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888,quiet=y</option>
+                        <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:8888,quiet=y</option>
                     </options>
                 </configuration>
             </plugin>

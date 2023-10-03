@@ -14,17 +14,17 @@ import org.apache.commons.io.FileUtils;
 import javafx.concurrent.Task;
 import javafx.util.Callback;
 import mb.client.webdav.model.WebDAVResource;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 
 public class DownloadFileTask extends Task<File> {
     
     private static final Logger LOG = Logger.getLogger(DownloadFileTask.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private WebDAVResource res;
     
-    public DownloadFileTask(WebDAVService service, WebDAVResource res) {
+    public DownloadFileTask(ResourceRepositoryService service, WebDAVResource res) {
         this.service = service;
         this.res = res;
     }

@@ -8,23 +8,23 @@ import java.util.stream.Collectors;
 
 import javafx.concurrent.Task;
 import mb.client.webdav.model.WebDAVResource;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 
 public class ListDirsTask extends Task<List<WebDAVResource> > {
     
     private static final Logger LOG = Logger.getLogger(ListDirsTask.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private String path;
     private boolean sorted;
     
-    public ListDirsTask(WebDAVService service, String path) {
+    public ListDirsTask(ResourceRepositoryService service, String path) {
         this.service = service;
         this.path = path;
     }
     
-    public ListDirsTask(WebDAVService service, String path, boolean sorted) {
+    public ListDirsTask(ResourceRepositoryService service, String path, boolean sorted) {
         this(service, path);
         this.sorted = sorted;
     }

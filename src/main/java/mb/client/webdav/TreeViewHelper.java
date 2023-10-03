@@ -19,10 +19,10 @@ import javafx.scene.control.TreeView;
 import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.Icons;
 import mb.client.webdav.components.ResourceContextMenu;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.ResourceTableItem;
-import mb.client.webdav.model.WebDAVHost;
 import mb.client.webdav.model.WebDAVResource;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 import mb.client.webdav.service.WebDAVUtil;
 import mb.client.webdav.tasks.ListDirsTask;
@@ -31,12 +31,13 @@ public class TreeViewHelper {
     
     private static final Logger LOG = Logger.getLogger(TreeViewHelper.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private ObservableList<ResourceTableItem> fileList;
     private HostMgmtHelper hostsHelper;
     private TreeView<WebDAVResource> tree;
+    private ResourceHost currentHost;
     
-    public TreeViewHelper(WebDAVService service, 
+    public TreeViewHelper(ResourceRepositoryService service, 
             ObservableList<ResourceTableItem> fileList, HostMgmtHelper hostsHelper) {
         this.service = service;
         this.fileList = fileList;
@@ -51,15 +52,28 @@ public class TreeViewHelper {
         return tree;
     }
     
-    public void setService(WebDAVService service) {
+    public void setService(ResourceRepositoryService service) {
         this.service = service;
     }
     
-    public void updateRoot(WebDAVHost host, WebDAVService service) {
+    public void updateRoot(ResourceHost host, ResourceRepositoryService service) {
+        this.currentHost = host;
         this.service = service;
         TreeItem<WebDAVResource> rootItem = createRootItem();
-        rootItem.setValue(WebDAVUtil.webDAVResourceFromHost(host));
+        
+        if(host.isLocal()) {
+            WebDAVResource res = new WebDAVResource(host.getRoot(), host.getRoot());
+            res.setAbsolutePath(host.getRoot());
+            rootItem.setValue(res);
+        } else {
+            rootItem.setValue(WebDAVUtil.webDAVResourceFromHost(host));
+        }
+        
         tree.setRoot(rootItem);
+        
+        if(host.getLastAccessedPath() != null) {
+            navigateTo(host.getLastAccessedPath());
+        }
     }
     
     public void clearTree() {
@@ -92,7 +106,13 @@ public class TreeViewHelper {
         if(splitPath.length > 0) {
             TreeItem<WebDAVResource> root = tree.getRoot();
             if(root.getValue().getAbsolutePath().equals(splitPath[0])) {
+                
+                // This is for handling WebDAV hosts
                 expandItemSync(root, splitPath, 1);
+            } else {
+                
+                // This is for handling local UNIX-like file systems
+                expandItemSync(root, splitPath, 0);
             }
         }
         return true;
@@ -193,9 +213,12 @@ public class TreeViewHelper {
     private void onTreeItemSelect(TreeItem<WebDAVResource> treeItem) {
         if(treeItem != null && treeItem.getValue() != null) {
             
-            // Fetch child resources of three item
+            // Fetch child resources of tree item
             List<WebDAVResource> files;
             try {
+                
+                // Keep last accessed path
+                currentHost.setLastAccessedPath(treeItem.getValue().getAbsolutePath());
                 
                 // TODO This should be an async task!
                 files = service.list(treeItem.getValue().getAbsolutePath());

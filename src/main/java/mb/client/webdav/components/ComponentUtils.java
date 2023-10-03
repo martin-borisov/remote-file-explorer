@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.controlsfx.control.PropertySheet;
 import org.controlsfx.control.PropertySheet.Item;
-import org.controlsfx.property.BeanProperty;
 import org.controlsfx.property.BeanPropertyUtils;
 
 import javafx.collections.ObservableList;
@@ -29,11 +28,13 @@ public class ComponentUtils {
      */
     public static void showResourcePropertiesDialog(WebDAVResource res) {
         ObservableList<Item> props = BeanPropertyUtils.getProperties(res);
-        props.stream().forEach(p -> ((BeanProperty) p).setEditable(false)); // Make properties read-only
         
         PropertySheet sheet = new PropertySheet(props);
         sheet.setModeSwitcherVisible(false);
         sheet.setSearchBoxVisible(false);
+        
+        // Custom editor factory for enhanced presentation
+        sheet.setPropertyEditorFactory(new ResourcePropertyEditorFactory());
         
         Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle("Resource Properties");
@@ -73,7 +74,7 @@ public class ComponentUtils {
      * @return Dialog to be used for move confirmation
      */
     public static Alert createResourceMoveDialog(String resName) {
-        return createResourceModificationDialog("Move Resource Confirmation", 
+        return createConfirmationDialog("Move Resource Confirmation", 
                 format("Are you sure you want to move resource ''{0}''?", resName), 
                 "Note that this cannot be undone!");
     }
@@ -84,15 +85,15 @@ public class ComponentUtils {
      * @return Dialog to be used for deletion confirmation
      */
     public static Alert createResourceDeletionDialog(String resName) {
-        return createResourceModificationDialog("Delete Resource Confirmation", 
+        return createConfirmationDialog("Delete Resource Confirmation", 
                 format("Are you sure you want to delete resource ''{0}''?", resName), 
                 "Note that this cannot be undone!");
     }
     
     /**
-     * Creates a dialog to confirm resource modification. Reused by table view and grid view.
+     * Creates a generic confirmation dialog
      */
-    public static Alert createResourceModificationDialog(String title, String header, String content) {
+    public static Alert createConfirmationDialog(String title, String header, String content) {
         return createAlertDialog(AlertType.CONFIRMATION, title, header, content);
     }
     

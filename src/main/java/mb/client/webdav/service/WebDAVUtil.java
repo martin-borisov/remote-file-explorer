@@ -12,7 +12,7 @@ import com.github.sardine.DavResource;
 import javafx.application.Platform;
 import javafx.scene.media.Media;
 import mb.client.webdav.media.MPMedia;
-import mb.client.webdav.model.WebDAVHost;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.WebDAVResource;
 
 public class WebDAVUtil {
@@ -20,16 +20,16 @@ public class WebDAVUtil {
     /**
      * Converts a {@link DavResource} to a {@link WebDAVResource}
      */
-    public static WebDAVResource webDAVResourceFromSardineResource(DavResource sardineRes, WebDAVHost host) {
+    public static WebDAVResource webDAVResourceFromSardineResource(DavResource sardineRes, ResourceHost host) {
         return new WebDAVResource(sardineRes.getHref().toString(), sardineRes.getName(), sardineRes.getContentType(), sardineRes.getContentLength(), 
                 sardineRes.getCreation(), sardineRes.getModified(), sardineRes.isDirectory(), true, host.getBaseURI());
     }
     
     /**
-     * Creates a root resource from a {@link WebDAVHost}
+     * Creates a root resource from a {@link ResourceHost}
      */
-    public static WebDAVResource webDAVResourceFromHost(WebDAVHost host) {
-        return new WebDAVResource(host.getBaseURI().toString() + host.getRoot(), host.getRoot());
+    public static WebDAVResource webDAVResourceFromHost(ResourceHost host) {
+        return new WebDAVResource(host.getBaseUriString() + host.getRoot(), host.getRoot());
     }
     
     /**

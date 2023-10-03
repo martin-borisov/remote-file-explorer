@@ -21,7 +21,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import mb.client.webdav.model.ResourceTableItem;
 import mb.client.webdav.service.ImageThumbService;
-import mb.client.webdav.service.WebDAVService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVServiceException;
 import net.coobird.thumbnailator.Thumbnails;
 
@@ -29,12 +29,12 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
     
     private static final Logger LOG = Logger.getLogger(LoadThumbsTask.class.getName());
     
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private List<ResourceTableItem> items;
     private int width;
     private Map<ResourceTableItem, Image> thumbMap;
     
-    public LoadThumbsTask(WebDAVService service, List<ResourceTableItem> items, 
+    public LoadThumbsTask(ResourceRepositoryService service, List<ResourceTableItem> items, 
             Map<ResourceTableItem, Image> thumbMap, int width) {
         this.service = service;
         this.items = items;
@@ -54,7 +54,7 @@ public class LoadThumbsTask extends Task<Map<ResourceTableItem, Image>> {
                 break;
             }
             
-            if(item.isImage() || item.isPdf()) {
+            if((item.isImage() || item.isPdf()) && !item.getName().startsWith(".")) {
                 LOG.fine(format("Start processing thumb for {0}", item));
                 
                 Image image = null;

@@ -38,12 +38,12 @@ public class ImageThumbService {
     }
     
     public boolean thumbExists(WebDAVResource res) {
-        return createFileForResource(res).exists();
+        return thumbToFile(res).exists();
     }
     
     public File saveThumb(WebDAVResource res, BufferedImage image) {
         
-        File file = createFileForResource(res);
+        File file = thumbToFile(res);
         if(!file.exists()) {
             
             String path = res.getAbsolutePath();
@@ -65,7 +65,7 @@ public class ImageThumbService {
     public Image getThumb(WebDAVResource res) {
         
         Image image = null;
-        File file = createFileForResource(res);
+        File file = thumbToFile(res);
         if(file.exists()) {
             
             InputStream is = null;
@@ -81,9 +81,23 @@ public class ImageThumbService {
         return image;
     }
     
-    private static File createFileForResource(WebDAVResource res) {
-        return new File("thumbs/" + res.getBaseURI().getHost() + 
-                FilenameUtils.removeExtension(res.getAbsolutePath()) + "." + DEFAULT_EXTENSION);
+    private static File thumbToFile(WebDAVResource res) {
+        
+        // Take care of local FS where host is missing
+        String baseDir = res.getBaseURI().getHost();
+        if(baseDir == null) {
+            baseDir = "local";
+        }
+        
+        String filePath = FilenameUtils.removeExtension(res.getAbsolutePath()) + "." + DEFAULT_EXTENSION;
+        
+        // Take care of Windows paths
+        if(filePath.contains(":")) {
+            filePath = filePath.replace(":", "");
+            baseDir = baseDir + "/";
+        }
+        
+        return new File("thumbs/" + baseDir + filePath);
     }
 }
  

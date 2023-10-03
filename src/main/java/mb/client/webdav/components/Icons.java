@@ -42,6 +42,16 @@ public class Icons {
         return icon;
     }
     
+    public static FontIcon minus() {
+        FontIcon icon = new FontIcon(FontAwesomeSolid.MINUS);
+        return icon;
+    }
+    
+    public static FontIcon edit() {
+        FontIcon icon = new FontIcon(FontAwesomeSolid.EDIT);
+        return icon;
+    }
+    
     public static FontIcon delete() {
         FontIcon icon = new FontIcon(FontAwesomeRegular.TIMES_CIRCLE);
         return icon;

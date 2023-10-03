@@ -2,15 +2,16 @@ package mb.client.webdav.model;
 
 import java.net.URI;
 
-public class WebDAVHost {
+public class ResourceHost {
     
     private URI baseURI;
-    private String root, user, password;
+    private String root, user, password, lastAccessedPath;
+    private boolean local;
     
-    public WebDAVHost() {
+    public ResourceHost() {
     }
     
-    public WebDAVHost(URI baseURI, String root, String user, String password) {
+    public ResourceHost(URI baseURI, String root, String user, String password) {
         this.baseURI = baseURI;
         this.root = root;
         this.user = user;
@@ -57,6 +58,22 @@ public class WebDAVHost {
     
     public void setPassword(String password) {
         this.password = password;
+    }
+    
+    public boolean isLocal() {
+        return local;
+    }
+
+    public void setLocal(boolean local) {
+        this.local = local;
+    }
+    
+    public String getLastAccessedPath() {
+        return lastAccessedPath;
+    }
+
+    public void setLastAccessedPath(String lastAccessedPath) {
+        this.lastAccessedPath = lastAccessedPath;
     }
 
     @Override

@@ -21,17 +21,18 @@ import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 
 import javafx.util.Callback;
-import mb.client.webdav.model.WebDAVHost;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.WebDAVResource;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVService;
 
 public class WebDAVServiceTest {
     
-    private static WebDAVHost host;
+    private static ResourceHost host;
     
     @BeforeClass
     public static void setupClass() {
-        host = new WebDAVHost(URI.create("https://www.dummy.com"), "/webdav", "user", "password");
+        host = new ResourceHost(URI.create("https://www.dummy.com"), "/webdav", "user", "password");
     }
     
     @Test
@@ -46,7 +47,7 @@ public class WebDAVServiceTest {
         MockSardineImpl mock = new MockSardineImpl();
         mock.setDavResListToReturn(data);
         
-        WebDAVService service = new WebDAVService(host);
+        ResourceRepositoryService service = new WebDAVService(host);
         injectMock(service, mock);
         
         // Execute and verify
@@ -75,7 +76,7 @@ public class WebDAVServiceTest {
         MockSardineImpl mock = new MockSardineImpl();
         mock.setIsToReturn(is);
         
-        WebDAVService service = new WebDAVService(host);
+        ResourceRepositoryService service = new WebDAVService(host);
         injectMock(service, mock);
         
         // Execute and verify
@@ -93,7 +94,7 @@ public class WebDAVServiceTest {
         Files.delete(Paths.get("downloads/testfile1"));
     }
     
-    private void injectMock(WebDAVService service, Sardine sardine) throws Exception {
+    private void injectMock(ResourceRepositoryService service, Sardine sardine) throws Exception {
         Field field = service.getClass().getDeclaredField("sardine");
         field.setAccessible(true);
         field.set(service, sardine);

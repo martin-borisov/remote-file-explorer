@@ -15,7 +15,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -32,7 +31,7 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.TreeItem;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -41,15 +40,17 @@ import mb.client.webdav.components.ComponentUtils;
 import mb.client.webdav.components.GridView;
 import mb.client.webdav.components.Icons;
 import mb.client.webdav.media.MPlayer;
+import mb.client.webdav.model.ResourceHost;
 import mb.client.webdav.model.ResourceTableItem;
-import mb.client.webdav.model.WebDAVHost;
 import mb.client.webdav.model.WebDAVResource;
 import mb.client.webdav.service.ConfigService;
+import mb.client.webdav.service.LocalFileSystemService;
+import mb.client.webdav.service.ResourceRepositoryService;
 import mb.client.webdav.service.WebDAVService;
 import mb.client.webdav.service.WebDAVServiceException;
-import mb.client.webdav.service.WebDAVUtil;
-import mb.client.webdav.tasks.DownloadFileTask;
 
+// TODO Multiselect in both views
+// TODO Support for keyboard shortcuts in grid view
 // TODO Drag and drop support in grid view
 public class WebDAVClient extends Application {
     
@@ -59,7 +60,7 @@ public class WebDAVClient extends Application {
     private Stage stage;
     private SplitPane splitPane;
     private HostMgmtHelper hostsHelper;
-    private ComboBox<WebDAVHost> hostsComboBox;
+    private ComboBox<ResourceHost> hostsComboBox;
     private BreadCrumbBar<WebDAVResource> breadCrumbBar;
     private TreeViewHelper treeHelper;
     private TreeView<WebDAVResource> treeView;
@@ -71,7 +72,7 @@ public class WebDAVClient extends Application {
     private MasterDetailPane mdp;
     private MPlayer player;
     private TaskProgressView<Task<?>> tpv;
-    private WebDAVService service;
+    private ResourceRepositoryService service;
     private ObservableList<ResourceTableItem> fileList;
     
     public WebDAVClient() {
@@ -88,7 +89,8 @@ public class WebDAVClient extends Application {
         BorderPane borderPane = new BorderPane();
         
         // Button bar with host selection, resource view toggle, bread crumb, etc
-        HBox buttonBar = new HBox(new Label("Host"), createHostComboBox(), createAddHostButton(),
+        HBox buttonBar = new HBox(new Label("Host"), createHostComboBox(), 
+                    createRemoveHostButton(), createAddHostButton(),
                 new Separator(Orientation.VERTICAL), createViewToggle(showTable),
                 new Separator(Orientation.VERTICAL), createBreadCrumbBar(), ComponentUtils.createHBoxSpacer(), 
                 new Separator(Orientation.VERTICAL), createGoToParentButton());
@@ -167,6 +169,7 @@ public class WebDAVClient extends Application {
         config.setProperty("stage.height", String.valueOf(stage.getHeight()));
         config.setProperty("split.pos", String.valueOf(splitPane.getDividerPositions()[0]));
         config.setProperty("col.name.width", String.valueOf(table.getColumns().get(1).getWidth()));
+        config.setProperty("col.name.sorttype", String.valueOf(table.getColumns().get(1).getSortType()));
         config.setProperty("taskslist.toggle", String.valueOf(mdp.showDetailNodeProperty().getValue()));
         config.setProperty("resourceview.table", String.valueOf(table.equals(splitPane.getItems().get(1))));
         
@@ -183,9 +186,13 @@ public class WebDAVClient extends Application {
         System.exit(0);
     }
 
-    private void createService(WebDAVHost host) {
+    private void createService(ResourceHost host) {
         destroyServiceInstanceIfExists();
-        service = new WebDAVService(host);
+        if(host.isLocal()) {
+            service = new LocalFileSystemService();
+        } else {
+            service = new WebDAVService(host);
+        }
         service.connect();
     }
     
@@ -248,7 +255,7 @@ public class WebDAVClient extends Application {
         return segButton;
     }
     
-    private ComboBox<WebDAVHost> createHostComboBox() {
+    private ComboBox<ResourceHost> createHostComboBox() {
         hostsHelper = new HostMgmtHelper();
         hostsComboBox = new ComboBox<>(hostsHelper.getHosts());
         hostsComboBox.setMinWidth(200);
@@ -260,22 +267,35 @@ public class WebDAVClient extends Application {
     
     private Button createAddHostButton() {
         Button button = new Button("", Icons.plus());
+        button.setTooltip(new Tooltip("Add new host"));
         button.setOnAction(event -> {
             onAddNewHost();
         });
         return button;
     }
     
+    private Button createRemoveHostButton() {
+        Button button = new Button("", Icons.minus());
+        button.setTooltip(new Tooltip("Remove selected host"));
+        button.setOnAction(event -> {
+            onRemoveSelectedHost();
+        });
+        return button;
+    }
+    
+    @SuppressWarnings("unused")
+    private Button createEditHostButton() {
+        Button button = new Button("", Icons.edit());
+        button.setTooltip(new Tooltip("Edit selected host"));
+        button.setOnAction(event -> {
+            onEditSelectedHost();
+        });
+        return button;
+    }
     
     private ScrollPane createGrid() {
-        grid = new GridView(service, fileList, 10, 10);
+        grid = new GridView(service, fileList, treeView, tpv, 10, 10);
         grid.setPadding(new Insets(10));
-        
-        grid.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                onRowDoubleClick((ResourceTableItem) grid.getSelectedItem().getUserData());
-            }
-        });
         
         // Make sure the grid scrolls
         ScrollPane scrollPane = new ScrollPane(grid);
@@ -301,7 +321,7 @@ public class WebDAVClient extends Application {
     private void selectLastUsedHost() {
         String prop = config.getProperty("host.lastused");
         if(prop != null && !prop.isEmpty()) {
-            WebDAVHost host =  hostsComboBox.getItems().stream()
+            ResourceHost host = hostsComboBox.getItems().stream()
                 .filter(h -> prop.equals(h.getBaseUriString()))
                 .findFirst()
                 .orElse(null);
@@ -337,46 +357,10 @@ public class WebDAVClient extends Application {
     
     /* Event handlers */
     
-    private void onRowDoubleClick(ResourceTableItem res) {
-        if(res.isDirectory()) {
-            
-            // Open directories
-            TreeItem<WebDAVResource> selItem = treeView.getSelectionModel().getSelectedItem();
-            if(selItem != null) {
-                selItem.setExpanded(true);
-                
-                // React when new items get added to the tree node (this happens asynchronously)
-                selItem.getChildren().addListener(new ListChangeListener<TreeItem<WebDAVResource>>() {
-                    public void onChanged(Change<? extends TreeItem<WebDAVResource>> change) {
-                        change.next();
-                        if(change.wasAdded()) {
-                            
-                            // Select item which was double clicked
-                            for (TreeItem<WebDAVResource> childItem : selItem.getChildren()) {
-                                if(res.getName().equals(childItem.getValue().getName())) {
-                                    treeView.getSelectionModel().select(childItem);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                });
-            }
-            
-        } else {
-            
-            // Download files
-            DownloadFileTask task = new DownloadFileTask(service,  res.getDavRes());
-            tpv.getTasks().add(0, task);
-            WebDAVUtil.startTask(task);
-        }
-    }
-    
     /**
      * Should be called when a host is selected in the list
      */
-    private void onHostSelected(WebDAVHost host) {
+    private void onHostSelected(ResourceHost host) {
         if(host != null) {
             createService(host);
             treeHelper.updateRoot(host, service);
@@ -395,6 +379,22 @@ public class WebDAVClient extends Application {
             // Select new host
             hostsComboBox.getSelectionModel().select(host);
         });
+    }
+    
+    private void onRemoveSelectedHost() {
+        ResourceHost host = hostsComboBox.getSelectionModel().getSelectedItem();
+        if(host != null) {
+            hostsHelper.triggerRemoveHost(host, h -> {
+                // TODO Clear tree, table and thumbs
+            });
+        }
+    }
+    
+    private void onEditSelectedHost() {
+        ResourceHost host = hostsComboBox.getSelectionModel().getSelectedItem();
+        if(host != null) {
+            // TODO Support for host editing
+        }
     }
     
     public static void main(String[] args) {
